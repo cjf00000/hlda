@@ -5,6 +5,7 @@
 #include <iostream>
 #include <corpus.h>
 #include <cmath>
+#include "Clock.h"
 #include "FiniteSymmetricDirichlet.h"
 
 using namespace std;
@@ -36,6 +37,7 @@ void FiniteSymmetricDirichlet::Initialize() {
 
 void FiniteSymmetricDirichlet::Estimate() {
     for (int it = 0; it < num_iters; it++) {
+        Clock clk;
         for (auto &doc: docs)
             SampleZ(doc);
 
@@ -45,8 +47,12 @@ void FiniteSymmetricDirichlet::Estimate() {
         SamplePhi();
 
         SamplePi();
-        
-        printf("Iteration %d\n", it);
+
+        double time = clk.toc();
+        double throughput = corpus.T / time / 1048576;
+        double perplexity = Perplexity();
+        printf("Iteration %d, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, time, throughput, perplexity);
     }
 }
 
@@ -136,4 +142,20 @@ void FiniteSymmetricDirichlet::InitializeTreeWeight() {
     nodes[0]->sum_log_weight = 0;
     for (size_t i = 1; i < nodes.size(); i++)
         nodes[i]->sum_log_weight = log(nodes[i]->weight) + nodes[i]->parent->weight;
+}
+
+double FiniteSymmetricDirichlet::Perplexity() {
+    double log_likelihood = 0;
+    for (auto &doc: docs) {
+        auto ids = doc.GetIDs();
+
+        for (auto w: doc.w) {
+            double prob = 0;
+            for (int l = 0; l < L; l++)
+                prob += doc.theta[l] * phi(ids[l], w);
+
+            log_likelihood += log(prob);
+        }
+    }
+    return exp(-log_likelihood / corpus.T);
 }

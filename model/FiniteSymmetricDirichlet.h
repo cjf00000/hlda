@@ -33,6 +33,8 @@ private:
 
     TProb WordScore(Document &doc, int l, int topic) override;
 
+    double Perplexity();
+
     int branching_factor;
 };
 
