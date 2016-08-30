@@ -51,8 +51,7 @@ void BaseHLDA::UpdateCount() {
     }
 }
 
-void BaseHLDA::Visualize(std::string fileName) {
-    int threshold = -1;
+void BaseHLDA::Visualize(std::string fileName, int threshold) {
     string dotFileName = fileName + ".dot";
 
     ofstream fout(dotFileName.c_str());

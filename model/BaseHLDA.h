@@ -24,7 +24,7 @@ public:
 
     virtual void Initialize();
 
-    void Visualize(std::string fileName);
+    void Visualize(std::string fileName, int threshold = -1);
 
     std::string TopWords(int id);
 

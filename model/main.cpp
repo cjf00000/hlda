@@ -13,7 +13,7 @@ int main() {
     int L = 4;
     double alpha = 0.5;
     double beta = 0.01;
-    double gamma = 0.4;
+    double gamma = 1.2;
     //double gamma = 0.01;
     int branching_factor = 0;
     int num_iters = 30;
@@ -24,7 +24,7 @@ int main() {
 
     model.Estimate();
 
-    model.Visualize("tree");
+    model.Visualize("tree", 10);
 
     return 0;
 }
