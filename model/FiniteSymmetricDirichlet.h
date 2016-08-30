@@ -18,6 +18,8 @@ public:
 
     void Estimate();
 
+    void LayerwiseInitialize(FiniteSymmetricDirichlet &model);
+
 private:
     void SampleZ(Document &doc);
 
@@ -34,6 +36,10 @@ private:
     TProb WordScore(Document &doc, int l, int topic) override;
 
     double Perplexity();
+
+    void ProgressivelyOnlineInitialize();
+
+    void InitializeBeta();
 
     int branching_factor;
 };

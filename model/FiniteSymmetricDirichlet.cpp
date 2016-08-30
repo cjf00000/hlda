@@ -32,6 +32,9 @@ void FiniteSymmetricDirichlet::Initialize() {
 
     SamplePhi();
     SamplePi();
+
+    //ProgressivelyOnlineInitialize();
+
     cout << "Initialization finished. " << tree.GetMaxID() << " nodes." << endl;
 }
 
@@ -41,7 +44,7 @@ void FiniteSymmetricDirichlet::Estimate() {
         for (auto &doc: docs)
             SampleZ(doc);
 
-        SampleC();
+        SampleC(true);
 
         UpdateCount();
         SamplePhi();
@@ -97,13 +100,13 @@ void FiniteSymmetricDirichlet::SamplePhi() {
     log_phi.Resize(tree.GetMaxID());
     phi.Resize(tree.GetMaxID());
     for (TTopic k = 0; k < K; k++) {
-        double sum = beta * corpus.V;
+        double sum = beta.Concentration();
         for (TWord v = 0; v < corpus.V; v++)
             sum += count(k, v);
 
         sum = 1. / sum;
         for (TWord v = 0; v < corpus.V; v++) {
-            double prob = (count(k, v) + beta) * sum;
+            double prob = (count(k, v) + beta(v)) * sum;
             phi(k, v) = prob;
             log_phi(k, v) = log(prob);
         }
@@ -158,4 +161,91 @@ double FiniteSymmetricDirichlet::Perplexity() {
         }
     }
     return exp(-log_likelihood / corpus.T);
+}
+
+void FiniteSymmetricDirichlet::ProgressivelyOnlineInitialize() {
+    // Don't use symmetric beta
+    //InitializeBeta();
+
+    UpdateCount(0);
+    SamplePhi();
+
+    // Perform progressively online initialization
+    int batch_size = 200;
+
+    for (size_t d_start = 0; d_start < docs.size(); d_start += batch_size) {
+        size_t d_end = std::min(docs.size(), d_start + batch_size);
+        printf("Doc %lu - %lu\n", d_start, d_end);
+
+        for (size_t d = d_start; d < d_end; d++)
+            for (auto &k: docs[d].z)
+                k = generator() % L;
+
+        for (int it = 0; it < 2; it++) {
+            SampleC(false, d_start, d_end);
+
+            for (size_t d = d_start; d < d_end; d++)
+                SampleZ(docs[d]);
+        }
+
+        UpdateCount(d_end);
+        SamplePhi();
+        SamplePi();
+    }
+}
+
+void FiniteSymmetricDirichlet::InitializeBeta() {
+    std::vector<double> tf((size_t) corpus.V, 10);
+    for (auto &doc: docs)
+        for (auto w: doc.w)
+            tf[w]++;
+
+    beta.Set(tf, beta.Concentration());
+}
+
+void FiniteSymmetricDirichlet::LayerwiseInitialize(FiniteSymmetricDirichlet &model) {
+    // Copy tree
+    tree.Copy(model.tree);
+    tree.SetL(L);
+
+    // Add virtual nodes
+    auto nodes = tree.GetAllNodes();
+    for (auto *node: nodes)
+        if (node->depth + 2 == L)
+            AddVirtualTree(node);
+
+    // Estimate count
+    count.Resize(tree.GetMaxID());
+    count.Clear();
+    for (TTopic k = 0; k < model.tree.GetMaxID(); k++)
+        for (TWord v = 0; v < corpus.V; v++)
+            count(k, v) = model.count(k, v);
+
+    SamplePhi();
+    SamplePi();
+
+    // Perform progressively online initialization
+    int batch_size = 500;
+
+    for (size_t d_start = 0; d_start < docs.size(); d_start += batch_size) {
+        size_t d_end = std::min(docs.size(), d_start + batch_size);
+        printf("Doc %lu - %lu\n", d_start, d_end);
+
+        for (size_t d = d_start; d < d_end; d++) {
+            for (auto &k: docs[d].z)
+                k = generator() % L;
+            SampleTheta(docs[d]);
+        }
+
+        for (int it = 0; it < 2; it++) {
+            SampleC(false, d_start, d_end);
+
+            for (size_t d = d_start; d < d_end; d++)
+                SampleZ(docs[d]);
+        }
+
+        UpdateCount(d_end);
+        SamplePhi();
+        SamplePi();
+    }
 }

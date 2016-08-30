@@ -2,9 +2,37 @@
 // Created by jianfei on 8/29/16.
 //
 
+#include <map>
+#include <iostream>
 #include "Tree.h"
 
 using Node = Tree::Node;
+
+void Tree::Copy(const Tree &from) {
+    std::cout << "Copying Tree" << std::endl;
+    L = from.L;
+    gamma = from.gamma;
+
+    root = new Node();
+    root->id = 0;
+    root->depth = 0;
+    root->parent = nullptr;
+
+    auto from_nodes = from.GetAllNodes();
+    std::map<int, Node *> my_id_to_nodes;
+    my_id_to_nodes[root->id] = root;
+
+    for (size_t i = 1; i < from_nodes.size(); i++) {
+        auto *from_node = from_nodes[i];
+        auto *parent = my_id_to_nodes[from_node->parent->id];
+        auto *new_node = AddChildren(parent);
+        new_node->id = from_node->id;
+        new_node->depth = from_node->depth;
+        my_id_to_nodes[new_node->id] = new_node;
+    }
+    unallocated_ids = from.unallocated_ids;
+    max_id = from.max_id;
+}
 
 Tree::Tree(int L, double gamma) : L(L), gamma(gamma), max_id(1) {
     root = new Node();
@@ -61,13 +89,13 @@ void Tree::UpdateNumDocs(Node *leaf, int delta) {
     }
 }
 
-std::vector<Node *> Tree::GetAllNodes() {
+std::vector<Node *> Tree::GetAllNodes() const {
     std::vector<Node *> result;
     getAllNodes(root, result);
     return std::move(result);
 }
 
-void Tree::getAllNodes(Node *root, std::vector<Node *> &result) {
+void Tree::getAllNodes(Node *root, std::vector<Node *> &result) const {
     result.push_back(root);
     for (auto *child: root->children)
         getAllNodes(child, result);

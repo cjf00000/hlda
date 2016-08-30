@@ -12,6 +12,7 @@
 #include "xorshift.h"
 #include "types.h"
 #include "Document.h"
+#include "DirichletParameter.h"
 
 class Corpus;
 
@@ -29,9 +30,10 @@ public:
     std::string TopWords(int id);
 
 protected:
-    void UpdateCount();
+    void UpdateCount(size_t end = (size_t) -1);
 
-    void SampleC();
+    void SampleC(bool clear_doc_count = true,
+                 size_t d_start = (size_t) -1, size_t d_end = (size_t) -1);
 
     // Required by SampleC
     virtual void InitializeTreeWeight() = 0;
@@ -41,7 +43,9 @@ protected:
     Tree tree;
     Corpus &corpus;
     int L;
-    TProb alpha, beta, gamma;
+    TProb alpha;
+    DirichletParameter beta;
+    TProb gamma;
     int num_iters;
     xorshift generator;
 

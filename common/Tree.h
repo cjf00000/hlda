@@ -23,6 +23,8 @@ public:
         double sum_log_prob;
     };
 
+    void Copy(const Tree &from);
+
     Tree(int L, double gamma);
 
     ~Tree();
@@ -36,6 +38,7 @@ public:
     template<class TGenerator>
     void Sample(Path &path, TGenerator &generator) {
         auto *current = root;
+        path.resize(L);
         path[0] = current;
         for (int l = 1; l < L; l++) {
             int N = (int) current->children.size();
@@ -56,9 +59,11 @@ public:
         }
     }
 
+    void SetL(int L) { this->L = L; }
+
     int GetMaxID() { return max_id; }
 
-    std::vector<Node *> GetAllNodes();
+    std::vector<Node *> GetAllNodes() const;
 
     void GetPath(Node *leaf, Path &path);
 
@@ -67,7 +72,7 @@ private:
 
     void AddFreeID(int id);
 
-    void getAllNodes(Node *root, std::vector<Node *> &result);
+    void getAllNodes(Node *root, std::vector<Node *> &result) const;
 
     int L;
     double gamma;
