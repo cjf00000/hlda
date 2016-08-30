@@ -14,14 +14,12 @@ public:
                              TProb alpha, TProb beta, TProb gamma,
                              int branching_factor, int num_iters);
 
-    virtual void Initialize();
+    void Initialize() override;
 
     void Estimate();
 
 private:
     void SampleZ(Document &doc);
-
-    void SampleC();
 
     void SamplePi();
 
@@ -31,7 +29,9 @@ private:
 
     void AddVirtualTree(Tree::Node *node);
 
-    TProb WordScore(Document &doc, int l, int topic);
+    void InitializeTreeWeight() override;
+
+    TProb WordScore(Document &doc, int l, int topic) override;
 
     int branching_factor;
 };

@@ -11,29 +11,12 @@
 #include "Tree.h"
 #include "xorshift.h"
 #include "types.h"
+#include "Document.h"
 
 class Corpus;
 
-struct Document {
-    Path c;
-    std::vector<TTopic> z;
-    std::vector<TWord> w;
-
-    std::vector<TProb> theta;
-
-    std::vector<TWord> reordered_w;
-    std::vector<TLen> offsets;
-
-    std::vector<TTopic> GetIDs();
-
-    void PartitionWByZ(int L);
-
-    TWord *BeginLevel(int l) { return reordered_w.data() + offsets[l]; }
-
-    TWord *EndLevel(int l) { return reordered_w.data() + offsets[l + 1]; }
-};
-
 class BaseHLDA {
+
 public:
     BaseHLDA(Corpus &corpus, int L,
              TProb alpha, TProb beta, TProb gamma,
@@ -47,6 +30,13 @@ public:
 
 protected:
     void UpdateCount();
+
+    void SampleC();
+
+    // Required by SampleC
+    virtual void InitializeTreeWeight() = 0;
+
+    virtual TProb WordScore(Document &doc, int l, int topic) = 0;
 
     Tree tree;
     Corpus &corpus;

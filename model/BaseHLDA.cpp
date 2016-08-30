@@ -9,34 +9,6 @@
 
 using namespace std;
 
-vector<TTopic> Document::GetIDs() {
-    std::vector<TTopic> result(c.size());
-    for (size_t l = 0; l < c.size(); l++)
-        result[l] = c[l]->id;
-    return std::move(result);
-}
-
-void Document::PartitionWByZ(int L) {
-    offsets.resize((size_t) L + 1);
-    fill(offsets.begin(), offsets.end(), 0);
-    reordered_w.resize(w.size());
-
-    TLen N = (TLen) z.size();
-
-    // Counting sort
-    // Count
-    for (auto k: z) offsets[k + 1]++;
-    for (int l = 1; l <= L; l++) offsets[l] += offsets[l - 1];
-
-    // Scatter
-    for (int n = 0; n < N; n++)
-        reordered_w[offsets[z[n]]++] = w[n];
-
-    // Correct offset
-    for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
-    offsets[0] = 0;
-}
-
 BaseHLDA::BaseHLDA(Corpus &corpus, int L,
                    TProb alpha, TProb beta, TProb gamma,
                    int num_iters) :
@@ -120,4 +92,47 @@ std::string BaseHLDA::TopWords(int id) {
         out << -rank[v].first << ' ' << corpus.vocab[rank[v].second] << "\n";
 
     return out.str();
+}
+
+void BaseHLDA::SampleC() {
+    auto nodes = tree.GetAllNodes();
+    vector<Tree::Node *> leaves;
+    for (auto *node: nodes)
+        if (node->depth + 1 == L)
+            leaves.push_back(node);
+
+    InitializeTreeWeight();
+
+    vector<TProb> leaf_probability;
+    leaf_probability.reserve(nodes.size());
+
+    // Sample path
+    for (auto *node: nodes)
+        node->num_docs = 0;
+
+    for (auto &doc: docs) {
+        doc.PartitionWByZ(L);
+        leaf_probability.clear();
+        for (auto *node: nodes) {
+            if (node->depth == 0)
+                node->sum_log_prob = 0;
+            else
+                node->sum_log_prob = node->parent->sum_log_prob +
+                                     WordScore(doc, node->depth, node->id);
+
+            if (node->depth + 1 == L)
+                leaf_probability.push_back(node->sum_log_prob + node->sum_log_weight);
+        }
+
+        // Sample
+        Softmax(leaf_probability.begin(), leaf_probability.end());
+        int leaf_index = DiscreteSample(leaf_probability.begin(),
+                                        leaf_probability.end(), generator);
+
+        tree.GetPath(leaves[leaf_index], doc.c);
+
+        // Update counts
+        for (auto *node: doc.c)
+            node->num_docs += 1;
+    }
 }

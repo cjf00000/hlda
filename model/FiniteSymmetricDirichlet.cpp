@@ -45,7 +45,7 @@ void FiniteSymmetricDirichlet::Estimate() {
         SamplePhi();
 
         SamplePi();
-
+        
         printf("Iteration %d\n", it);
     }
 }
@@ -82,52 +82,8 @@ void FiniteSymmetricDirichlet::SampleTheta(Document &doc) {
         doc.theta[k]++;
 
     double normalizing_constant = 1. / (N + alpha * L);
-    for (int l = 0; l < L; l++) doc.theta[l] = (doc.theta[l] + alpha) * normalizing_constant;
-}
-
-void FiniteSymmetricDirichlet::SampleC() {
-    // TODO refactor this function?
-    auto nodes = tree.GetAllNodes();
-    std::vector<Tree::Node *> leaves;
-    for (auto *node: nodes)
-        if (node->depth + 1 == L)
-            leaves.push_back(node);
-
-    // Initialize tree weight
-    nodes[0]->sum_log_weight = 0;
-    for (size_t i = 1; i < nodes.size(); i++)
-        nodes[i]->sum_log_weight = log(nodes[i]->weight) + nodes[i]->parent->weight;
-
-    std::vector<TProb> leaf_probability;
-    leaf_probability.reserve(nodes.size());
-
-    // Sample path
-    for (auto *node: nodes)
-        node->num_docs = 0;
-    for (auto &doc: docs) {
-        doc.PartitionWByZ(L);
-        leaf_probability.clear();
-        for (auto *node: nodes) {
-            if (node->depth == 0)
-                node->sum_log_prob = 0;
-            else
-                node->sum_log_prob = node->parent->sum_log_prob +
-                                     WordScore(doc, node->depth, node->id);
-            if (node->depth + 1 == L)
-                leaf_probability.push_back(node->sum_log_prob + node->sum_log_weight);
-        }
-
-        // Sample
-        Softmax(leaf_probability.begin(), leaf_probability.end());
-        int leaf_index = DiscreteSample(leaf_probability.begin(),
-                                        leaf_probability.end(), generator);
-
-        tree.GetPath(leaves[leaf_index], doc.c);
-
-        // Update counts
-        for (auto *node: doc.c)
-            node->num_docs += 1;
-    }
+    for (int l = 0; l < L; l++)
+        doc.theta[l] = (doc.theta[l] + alpha) * normalizing_constant;
 }
 
 void FiniteSymmetricDirichlet::SamplePhi() {
@@ -164,16 +120,6 @@ void FiniteSymmetricDirichlet::SamplePi() {
 }
 
 TProb FiniteSymmetricDirichlet::WordScore(Document &doc, int l, int topic) {
-    /*double theta_score = 0;
-    double phi_score = 0;
-    double log_theta = log(doc.theta[l]);
-    for (size_t n=0; n<doc.z.size(); n++)
-        if (doc.z[n] == l) {
-            theta_score += log_theta;
-            phi_score += log_phi(doc.)
-        }*/
-
-
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
 
@@ -183,4 +129,11 @@ TProb FiniteSymmetricDirichlet::WordScore(Document &doc, int l, int topic) {
         phi_score += log_phi(topic, *w);
 
     return theta_score + phi_score;
+}
+
+void FiniteSymmetricDirichlet::InitializeTreeWeight() {
+    auto nodes = tree.GetAllNodes();
+    nodes[0]->sum_log_weight = 0;
+    for (size_t i = 1; i < nodes.size(); i++)
+        nodes[i]->sum_log_weight = log(nodes[i]->weight) + nodes[i]->parent->weight;
 }
