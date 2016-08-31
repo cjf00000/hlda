@@ -21,6 +21,8 @@ public:
     void LayerwiseInitialize(FiniteSymmetricDirichlet &model);
 
 private:
+    void SampleC(bool clear_doc_count, size_t d_start = (size_t) -1, size_t d_end = (size_t) -1);
+
     void SampleZ(Document &doc);
 
     void SamplePi();
@@ -31,7 +33,7 @@ private:
 
     void AddVirtualTree(Tree::Node *node);
 
-    void InitializeTreeWeight() override;
+    void InitializeTreeWeight();
 
     TProb WordScore(Document &doc, int l, int topic) override;
 

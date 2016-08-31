@@ -4,6 +4,8 @@
 
 #include "Document.h"
 
+using namespace std;
+
 std::vector<TTopic> Document::GetIDs() {
     std::vector<TTopic> result(c.size());
     for (std::size_t l = 0; l < c.size(); l++)
@@ -12,6 +14,7 @@ std::vector<TTopic> Document::GetIDs() {
 }
 
 void Document::PartitionWByZ(int L) {
+    Check();
     offsets.resize((std::size_t) L + 1);
     fill(offsets.begin(), offsets.end(), 0);
     reordered_w.resize(w.size());
@@ -30,4 +33,10 @@ void Document::PartitionWByZ(int L) {
     // Correct offset
     for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
     offsets[0] = 0;
+}
+
+void Document::Check() {
+    for (size_t i = 1; i < w.size(); i++)
+        if (w[i - 1] > w[i])
+            throw runtime_error("Incorrect word order in document.");
 }

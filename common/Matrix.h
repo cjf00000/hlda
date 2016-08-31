@@ -23,6 +23,7 @@ public:
             while (R < new_R) R = R * 2 + 1;
             data.resize(R * C);
             std::copy(old_data.begin(), old_data.end(), data.begin());
+            std::fill(data.begin() + (old_data.end() - old_data.begin()), data.end(), 0);
         }
     }
 

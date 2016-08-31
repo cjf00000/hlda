@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+for i in `ls tree*.dot`
+do
+    filename=${i%.*}
+    echo $filename
+    dot -Tpng -o${filename}.png ${filename}.dot 
+done

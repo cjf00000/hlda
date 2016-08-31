@@ -32,11 +32,8 @@ public:
 protected:
     void UpdateCount(size_t end = (size_t) -1);
 
-    void SampleC(bool clear_doc_count = true,
-                 size_t d_start = (size_t) -1, size_t d_end = (size_t) -1);
-
     // Required by SampleC
-    virtual void InitializeTreeWeight() = 0;
+    virtual void DFSSample(Document &doc);
 
     virtual TProb WordScore(Document &doc, int l, int topic) = 0;
 

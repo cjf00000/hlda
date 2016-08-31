@@ -69,6 +69,31 @@ void FiniteSymmetricDirichlet::AddVirtualTree(Tree::Node *node) {
     }
 }
 
+void FiniteSymmetricDirichlet::SampleC(bool clear_doc_count, size_t d_start, size_t d_end) {
+    auto nodes = tree.GetAllNodes();
+
+    InitializeTreeWeight();
+
+    // Sample path
+    if (clear_doc_count)
+        for (auto *node: nodes)
+            node->num_docs = 0;
+
+    if (d_start == (size_t) -1) d_start = 0;
+    if (d_end == (size_t) -1) d_end = docs.size();
+
+    for (size_t d = d_start; d < d_end; d++) {
+        auto &doc = docs[d];
+
+        DFSSample(doc);
+
+        // Update counts
+        for (auto *node: doc.c)
+            node->num_docs += 1;
+    }
+}
+
+
 void FiniteSymmetricDirichlet::SampleZ(Document &doc) {
     auto ids = doc.GetIDs();
     std::vector<TProb> prob((size_t) L);
@@ -132,12 +157,11 @@ TProb FiniteSymmetricDirichlet::WordScore(Document &doc, int l, int topic) {
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
 
-    double theta_score = (e - b) * log(doc.theta[l]);
     double phi_score = 0;
     for (auto *w = b; w != e; w++)
         phi_score += log_phi(topic, *w);
 
-    return theta_score + phi_score;
+    return phi_score;
 }
 
 void FiniteSymmetricDirichlet::InitializeTreeWeight() {

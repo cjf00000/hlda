@@ -42,5 +42,7 @@ void Softmax(TIterator begin, TIterator end) {
         *it *= inv_sum;
 }
 
+// lgamma(b) - lgamma(a)
+extern double LogGammaDifference(int a, int b);
 
 #endif //FAST_HLDA2_UTILS_H

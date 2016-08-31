@@ -1,6 +1,7 @@
 #include <iostream>
 #include "corpus.h"
 #include "FiniteSymmetricDirichlet.h"
+#include "CollapsedSampling.h"
 
 using namespace std;
 
@@ -13,20 +14,24 @@ int main() {
     int L = 4;
     double alpha = 0.5;
     double beta = 0.01;
-    double gamma = 1.2;
-    //double gamma = 0.01;
-    int branching_factor = 3;
+    double gamma = 1;
+    //double gamma = 0.001;
+    int branching_factor = 0;
     int num_iters = 30;
 
-    auto *model1 = new FiniteSymmetricDirichlet(corpus, 1,
+    // FSD
+    /*auto *model1 = new FiniteSymmetricDirichlet(corpus, L,
                                    alpha, beta, gamma,
-                                   branching_factor, num_iters);
+                                   branching_factor, num_iters);*/
+
+    auto model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
     model1->Initialize();
     model1->Estimate();
 
-    model1->Visualize("tree1", 10);
+    model1->Visualize("tree1", 5);
 
-    auto *last_model = model1;
+
+    /*auto *last_model = model1;
 
     for (int l = 2; l <= L; l++) {
         auto *model = new FiniteSymmetricDirichlet(corpus, l,
@@ -34,10 +39,10 @@ int main() {
                                                    l == 2 ? 6 : branching_factor, num_iters);
         model->LayerwiseInitialize(*last_model);
         model->Estimate();
-        model->Visualize("tree" + to_string(l), 10);
+        model->Visualize("tree" + to_string(l), 30);
 
         last_model = model;
-    }
+    }*/
 
     return 0;
 }
