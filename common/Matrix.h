@@ -9,21 +9,36 @@
 #include <algorithm>
 #include <memory.h>
 
-// An matrix with variable number of rows
+// A matrix whose size can grow
 template<class T>
 class Matrix {
 public:
     Matrix(int R, int C) : R(R), C(C) {}
 
-    Matrix(int C) : R(0), C(C) {}
+    void SetR(int new_R) {
+        Resize(new_R, C);
+    }
 
-    void Resize(int new_R) {
-        if (new_R > R) {
-            std::vector<T> old_data = std::move(data);
+    void SetC(int new_C) {
+        Resize(R, new_C);
+    }
+
+    void Resize(int new_R, int new_C) {
+        if (new_R > R || new_C > C) {
+            int old_R = R;
+            int old_C = C;
+
             while (R < new_R) R = R * 2 + 1;
+            while (C < new_C) C = C * 2 + 1;
+
+            std::vector<T> old_data = std::move(data);
+
             data.resize(R * C);
-            std::copy(old_data.begin(), old_data.end(), data.begin());
-            std::fill(data.begin() + (old_data.end() - old_data.begin()), data.end(), 0);
+            fill(data.begin(), data.end(), 0);
+
+            for (int r = 0; r < old_R; r++)
+                copy(old_data.begin() + r * old_C, old_data.begin() + (r + 1) * old_C,
+                     data.begin() + r * C);
         }
     }
 

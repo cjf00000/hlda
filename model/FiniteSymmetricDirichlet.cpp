@@ -25,7 +25,7 @@ void FiniteSymmetricDirichlet::Initialize() {
     for (auto *node: nodes) {
         AddVirtualTree(node);
     }
-    count.Resize(tree.GetMaxID());
+    count.SetR(tree.GetMaxID());
 
     for (auto &doc: docs)
         SampleTheta(doc);
@@ -172,8 +172,8 @@ void FiniteSymmetricDirichlet::SampleTheta(Document &doc) {
 
 void FiniteSymmetricDirichlet::SamplePhi() {
     TTopic K = tree.GetMaxID();
-    log_phi.Resize(tree.GetMaxID());
-    phi.Resize(tree.GetMaxID());
+    log_phi.SetR(tree.GetMaxID());
+    phi.SetR(tree.GetMaxID());
     for (TTopic k = 0; k < K; k++) {
         double sum = beta.Concentration();
         for (TWord v = 0; v < corpus.V; v++)
@@ -289,7 +289,7 @@ void FiniteSymmetricDirichlet::LayerwiseInitialize(FiniteSymmetricDirichlet &mod
             AddVirtualTree(node);
 
     // Estimate count
-    count.Resize(tree.GetMaxID());
+    count.SetR(tree.GetMaxID());
     count.Clear();
     for (TTopic k = 0; k < model.tree.GetMaxID(); k++)
         for (TWord v = 0; v < corpus.V; v++)

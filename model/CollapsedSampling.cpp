@@ -222,7 +222,7 @@ void CollapsedSampling::DFSSample(Document &doc) {
 
 void CollapsedSampling::UpdateDocCount(Document &doc, int delta) {
     TTopic K = tree.GetMaxID();
-    count.Resize(K);
+    count.SetR(K);
     while (ck.size() < (size_t) K) ck.push_back(0);
 
     auto ids = doc.GetIDs();

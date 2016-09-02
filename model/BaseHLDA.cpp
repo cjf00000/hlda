@@ -15,7 +15,7 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
         tree(L, gamma),
         corpus(corpus), L(L), alpha(alpha), beta(corpus.V, beta), gamma(gamma),
         num_iters(num_iters),
-        phi(corpus.V), log_phi(corpus.V), count(corpus.V) {
+        phi(0, corpus.V), log_phi(0, corpus.V), count(0, corpus.V) {
     TDoc D = corpus.D;
     docs.resize((size_t) D);
     for (int d = 0; d < D; d++)
@@ -41,7 +41,7 @@ void BaseHLDA::Initialize() {
 }
 
 void BaseHLDA::UpdateCount(size_t end) {
-    count.Resize(tree.GetMaxID());
+    count.SetR(tree.GetMaxID());
     count.Clear();
     size_t e = end == (size_t) -1 ? docs.size() : end;
     for (size_t d = 0; d < e; d++) {
