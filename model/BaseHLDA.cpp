@@ -107,7 +107,7 @@ void BaseHLDA::DFSSample(Document &doc) {
     // Warning: this is not thread safe
     for (auto *node: nodes) {
         if (node->depth == 0)
-            node->sum_log_prob = 0;
+            node->sum_log_prob = WordScore(doc, node->depth, node->id);
         else
             node->sum_log_prob = node->parent->sum_log_prob +
                                  WordScore(doc, node->depth, node->id);

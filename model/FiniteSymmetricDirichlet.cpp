@@ -41,10 +41,14 @@ void FiniteSymmetricDirichlet::Initialize() {
 void FiniteSymmetricDirichlet::Estimate() {
     for (int it = 0; it < num_iters; it++) {
         Clock clk;
+        SampleC(true);
+
         for (auto &doc: docs)
             SampleZ(doc);
 
-        SampleC(true);
+        //SampleCCollapseZ(true);
+        //for (auto &doc: docs)
+        //    SampleZ(doc);
 
         UpdateCount();
         SamplePhi();
@@ -54,8 +58,9 @@ void FiniteSymmetricDirichlet::Estimate() {
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
-        printf("Iteration %d, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-               it, time, throughput, perplexity);
+        auto nodes = tree.GetAllNodes();
+        printf("Iteration %d, %lu topics, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, nodes.size(), time, throughput, perplexity);
     }
 }
 
@@ -86,6 +91,51 @@ void FiniteSymmetricDirichlet::SampleC(bool clear_doc_count, size_t d_start, siz
         auto &doc = docs[d];
 
         DFSSample(doc);
+
+        // Update counts
+        for (auto *node: doc.c)
+            node->num_docs += 1;
+    }
+}
+
+void FiniteSymmetricDirichlet::SampleCCollapseZ(bool clear_doc_count, size_t d_start, size_t d_end) {
+    auto nodes = tree.GetAllNodes();
+    decltype(nodes) leaves;
+    for (auto *node: nodes) if (node->depth+1==L) leaves.push_back(node);
+    vector<double> log_prob(leaves.size());
+
+    InitializeTreeWeight();
+
+    // Sample path
+    if (clear_doc_count)
+        for (auto *node: nodes)
+            node->num_docs = 0;
+
+    if (d_start == (size_t) -1) d_start = 0;
+    if (d_end == (size_t) -1) d_end = docs.size();
+
+    for (size_t d = d_start; d < d_end; d++) {
+        auto &doc = docs[d];
+        log_prob.clear();
+
+        for (auto *leaf: leaves) {
+            tree.GetPath(leaf, doc.c);
+            auto ids = doc.GetIDs();
+
+            double log_likelihood = 0;
+            for (int n=0; n<(int)doc.z.size(); n++) {
+                double p = 0;
+                for (int l=0; l<L; l++)
+                    p += doc.theta[l] * phi(ids[l], doc.w[n]);
+                log_likelihood += log(p);
+            }
+            log_prob.push_back(log_likelihood + leaf->sum_log_weight);
+        }
+
+        Softmax(log_prob.begin(), log_prob.end());
+        int leaf_index = DiscreteSample(log_prob.begin(), log_prob.end(), generator);
+
+        tree.GetPath(leaves[leaf_index], doc.c);
 
         // Update counts
         for (auto *node: doc.c)

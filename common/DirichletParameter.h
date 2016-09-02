@@ -11,7 +11,7 @@
 
 class DirichletParameter {
 public:
-    DirichletParameter(int N, TProb concentration) : alpha(N, concentration / N) {}
+    DirichletParameter(int N, TProb concentration) : alpha(N, concentration) {}
 
     void Set(std::vector<TProb> &baseMeasure, TProb concentration);
 

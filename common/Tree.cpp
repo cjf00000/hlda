@@ -6,6 +6,8 @@
 #include <iostream>
 #include "Tree.h"
 
+using namespace std;
+
 using Node = Tree::Node;
 
 void Tree::Copy(const Tree &from) {
@@ -85,6 +87,7 @@ void Tree::UpdateNumDocs(Node *leaf, int delta) {
         auto *next_leaf = leaf->parent;
         if (leaf->num_docs == 0)
             Remove(leaf);
+
         leaf = next_leaf;
     }
 }

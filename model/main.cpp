@@ -13,18 +13,21 @@ int main() {
     // Initialize model
     int L = 4;
     double alpha = 0.5;
-    double beta = 0.01;
-    double gamma = 1;
+    double beta = 0.5;
+    double gamma = 3.0;
     //double gamma = 0.001;
     int branching_factor = 0;
     int num_iters = 30;
 
-    // FSD
-    /*auto *model1 = new FiniteSymmetricDirichlet(corpus, L,
-                                   alpha, beta, gamma,
-                                   branching_factor, num_iters);*/
+    // Problem 1: there are too much topics during initialization
+    // Problem 2: it cannot produce new topics...
 
-    auto model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
+    // FSD
+    auto *model1 = new FiniteSymmetricDirichlet(corpus, L,
+                                   alpha, beta, gamma,
+                                   branching_factor, num_iters);
+
+    //auto model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
     model1->Initialize();
     model1->Estimate();
 

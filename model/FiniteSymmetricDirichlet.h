@@ -21,7 +21,13 @@ public:
     void LayerwiseInitialize(FiniteSymmetricDirichlet &model);
 
 private:
-    void SampleC(bool clear_doc_count, size_t d_start = (size_t) -1, size_t d_end = (size_t) -1);
+    void SampleC(bool clear_doc_count,
+                 size_t d_start = (size_t) -1,
+                 size_t d_end = (size_t) -1);
+
+    void SampleCCollapseZ(bool clear_doc_count,
+                  size_t d_start = (size_t) -1,
+                  size_t d_end = (size_t) -1);
 
     void SampleZ(Document &doc);
 

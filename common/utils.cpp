@@ -7,9 +7,9 @@
 
 std::uniform_real_distribution<double> u01;
 
-double LogGammaDifference(int a, int b) {
+double LogGammaDifference(double start, int len) {
     double result = 0;
-    for (int i = a; i < b; i++)
-        result += log(i);
+    for (int i = 0; i < len; i++)
+        result += log(start + i);
     return result;
 }
