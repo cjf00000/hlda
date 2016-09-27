@@ -15,22 +15,43 @@ CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters) {}
 
 void CollapsedSampling::Initialize() {
-    BaseHLDA::Initialize();
-    TTopic K = tree.GetMaxID();
-    while ((TTopic) ck.size() < K) ck.push_back(0);
-    for (TTopic k = 0; k < K; k++)
-        for (TWord v = 0; v < corpus.V; v++)
-            ck[k] += count(k, v);
+    ck.resize(1);
+    count.SetR(1);
+    ck[0] = 0;
+    ProgressivelyOnlineInitialize();
+
+    //auto bak = tree.gamma;
+    //tree.gamma = 1e-9;
+    //BaseHLDA::Initialize();
+    //tree.gamma = bak;
+
+    // Build Ck
+    //TTopic K = tree.GetMaxID();
+    //while ((TTopic) ck.size() < K) ck.push_back(0);
+    //for (TTopic k = 0; k < K; k++)
+    //    for (TWord v = 0; v < corpus.V; v++)
+    //        ck[k] += count(k, v);
+}
+
+void CollapsedSampling::ProgressivelyOnlineInitialize() {
+    for (auto &doc: docs) {
+        for (auto &k: doc.z)
+            k = generator() % L;
+
+        SampleC(doc, false);
+        SampleZ(doc, true);
+    }
 }
 
 void CollapsedSampling::Estimate() {
     for (int it = 0; it < num_iters; it++) {
         Clock clk;
         Check();
-        SampleC();
 
-        for (auto &doc: docs)
-            SampleZ(doc);
+        for (auto &doc: docs) {
+            SampleC(doc, true);
+            SampleZ(doc, true);
+        }
 
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
@@ -41,7 +62,7 @@ void CollapsedSampling::Estimate() {
     }
 }
 
-void CollapsedSampling::SampleZ(Document &doc) {
+void CollapsedSampling::SampleZ(Document &doc, bool decrease_count) {
     TLen N = (TLen) doc.z.size();
     auto ids = doc.GetIDs();
     std::vector<TProb> prob((size_t) L);
@@ -53,9 +74,11 @@ void CollapsedSampling::SampleZ(Document &doc) {
         TWord v = doc.w[n];
         TTopic l = doc.z[n];
 
-        --count(ids[l], v);
-        --ck[ids[l]];
-        --cdl[l];
+        if (decrease_count) {
+            --count(ids[l], v);
+            --ck[ids[l]];
+            --cdl[l];
+        }
 
         for (TTopic i = 0; i < L; i++)
             prob[i] = (cdl[i] + alpha) *
@@ -70,36 +93,24 @@ void CollapsedSampling::SampleZ(Document &doc) {
     }
 }
 
-void CollapsedSampling::SampleC() {
-    for (auto &doc: docs) {
+void CollapsedSampling::SampleC(Document &doc, bool decrease_count) {
+    if (decrease_count) {
         UpdateDocCount(doc, -1);
         tree.UpdateNumDocs(doc.c.back(), -1);
-
-        // Compute NCRP probability
-        InitializeTreeWeight();
-
-        // Sample
-        DFSSample(doc);
-
-        // Increase num_docs
-        UpdateDocCount(doc, 1);
-        tree.UpdateNumDocs(doc.c.back(), 1);
     }
-    /*
-    // Count
-    std::vector<int> counts(tree.GetMaxID());
-    for (auto &doc: docs)
-        for (auto *node: doc.c)
-            counts[node->id]++;
 
-    cout << "C" << endl;
-    auto nodes = tree.GetAllNodes();
-    for (auto *node: nodes)
-        if (counts[node->id] != node->num_docs)
-            throw runtime_error("Error");*/
+    // Compute NCRP probability
+    InitializeTreeWeight();
+
+    // Sample
+    DFSSample(doc);
+
+    // Increase num_docs
+    UpdateDocCount(doc, 1);
+    tree.UpdateNumDocs(doc.c.back(), 1);
 }
 
-TProb CollapsedSampling::WordScore(Document &doc, int l, int topic) {
+TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *node) {
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
     double beta_bar = beta.Concentration();
@@ -158,25 +169,6 @@ void CollapsedSampling::Check() {
         throw runtime_error("Total token error!");
 }
 
-void CollapsedSampling::InitializeTreeWeight() {
-    auto nodes = tree.GetAllNodes();
-    nodes[0]->sum_log_weight = 0;
-
-    for (auto *node: nodes)
-        if (!node->children.empty()) {
-            // Propagate
-            double sum_weight = gamma;
-            for (auto *child: node->children)
-                sum_weight += child->num_docs;
-
-            for (auto *child: node->children)
-                child->sum_log_weight = node->sum_log_weight +
-                                        log((child->num_docs + 1e-10) / sum_weight);
-
-            node->sum_log_weight += log(gamma / sum_weight);
-        }
-}
-
 void CollapsedSampling::DFSSample(Document &doc) {
     auto nodes = tree.GetAllNodes();
     vector<TProb> prob;
@@ -187,17 +179,17 @@ void CollapsedSampling::DFSSample(Document &doc) {
     // Compute empty probability
     vector<TProb> emptyProbability((size_t) L);
     for (int l = 0; l < L; l++)
-        emptyProbability[l] = WordScore(doc, l, -1);
+        emptyProbability[l] = WordScore(doc, l, -1, nullptr);
     for (int l = L - 2; l >= 0; l--)
         emptyProbability[l] += emptyProbability[l + 1];
 
     // Warning: this is not thread safe
     for (auto *node: nodes) {
         if (node->depth == 0)
-            node->sum_log_prob = WordScore(doc, node->depth, node->id);
+            node->sum_log_prob = WordScore(doc, node->depth, node->id, node);
         else
             node->sum_log_prob = node->parent->sum_log_prob +
-                                 WordScore(doc, node->depth, node->id);
+                                 WordScore(doc, node->depth, node->id, node);
 
         if (node->depth + 1 == L) {
             prob.push_back(node->sum_log_prob + node->sum_log_weight);

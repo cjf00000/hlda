@@ -41,6 +41,7 @@ Tree::Tree(int L, double gamma) : L(L), gamma(gamma), max_id(1) {
     root->id = 0;
     root->depth = 0;
     root->parent = nullptr;
+    root->is_collapsed = true;
 }
 
 Tree::~Tree() {
@@ -54,6 +55,7 @@ Node *Tree::AddChildren(Node *parent) {
     node->parent = parent;
     node->id = GetFreeID();
     node->depth = parent->depth + 1;
+    node->is_collapsed = true;
     parent->children.push_back(node);
     return node;
 }

@@ -21,6 +21,8 @@ public:
         double weight;
         double sum_log_weight;
         double sum_log_prob;
+
+        bool is_collapsed;
     };
 
     void Copy(const Tree &from);
@@ -67,6 +69,9 @@ public:
 
     void GetPath(Node *leaf, Path &path);
 
+    int L;
+    double gamma;
+
 private:
     int GetFreeID();
 
@@ -74,8 +79,6 @@ private:
 
     void getAllNodes(Node *root, std::vector<Node *> &result) const;
 
-    int L;
-    double gamma;
     Node *root;
     std::vector<int> unallocated_ids;
     int max_id;

@@ -39,9 +39,9 @@ private:
 
     void AddVirtualTree(Tree::Node *node);
 
-    void InitializeTreeWeight();
+    void InitializeTreeWeight() override;
 
-    TProb WordScore(Document &doc, int l, int topic) override;
+    TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) override;
 
     double Perplexity();
 

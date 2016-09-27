@@ -35,7 +35,9 @@ protected:
     // Required by SampleC
     virtual void DFSSample(Document &doc);
 
-    virtual TProb WordScore(Document &doc, int l, int topic) = 0;
+    virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) = 0;
+
+    virtual void InitializeTreeWeight();
 
     Tree tree;
     Corpus &corpus;

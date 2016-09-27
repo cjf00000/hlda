@@ -14,14 +14,14 @@ public:
 
     void Initialize() override;
 
-    void Estimate();
+    void ProgressivelyOnlineInitialize();
 
-private:
-    void SampleZ(Document &doc);
+    virtual void Estimate();
 
-    void SampleC();
+protected:
+    virtual void SampleZ(Document &doc, bool decrease_count);
 
-    void InitializeTreeWeight();
+    virtual void SampleC(Document &doc, bool decrease_count);
 
     void DFSSample(Document &doc) override;
 
@@ -29,9 +29,9 @@ private:
 
     void Check();
 
-    TProb WordScore(Document &doc, int l, int topic);
-
     void UpdateDocCount(Document &doc, int delta);
+
+    virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node);
 
     std::vector<TCount> ck;
 };

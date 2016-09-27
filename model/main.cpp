@@ -2,6 +2,7 @@
 #include "corpus.h"
 #include "FiniteSymmetricDirichlet.h"
 #include "CollapsedSampling.h"
+#include "PartiallyCollapsedSampling.h"
 
 using namespace std;
 
@@ -13,8 +14,8 @@ int main() {
     // Initialize model
     int L = 4;
     double alpha = 0.5;
-    double beta = 0.5;
-    double gamma = 3.0;
+    double beta = 0.2;
+    double gamma = 4.0;
     //double gamma = 0.001;
     int branching_factor = 0;
     int num_iters = 30;
@@ -23,15 +24,13 @@ int main() {
     // Problem 2: it cannot produce new topics...
 
     // FSD
-    auto *model1 = new FiniteSymmetricDirichlet(corpus, L,
-                                   alpha, beta, gamma,
-                                   branching_factor, num_iters);
-
-    //auto model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
+    //auto *model1 = new FiniteSymmetricDirichlet(corpus, L, alpha, beta, gamma, branching_factor, num_iters);
+    //auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
+    auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters);
     model1->Initialize();
     model1->Estimate();
 
-    model1->Visualize("tree1", 5);
+    model1->Visualize("tree1", 10);
 
 
     /*auto *last_model = model1;

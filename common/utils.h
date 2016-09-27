@@ -45,4 +45,47 @@ void Softmax(TIterator begin, TIterator end) {
 // lgamma(start+len) - lgamma(start)
 extern double LogGammaDifference(double start, int len);
 
+extern double LogSum(double log_a, double log_b);
+
+template<class T>
+class beta_distribution {
+public:
+    beta_distribution(T alpha, T beta) :
+            gam1(alpha), gam2(beta) {}
+
+    template<class TGenerator>
+    T operator()(TGenerator &generator) {
+        T a = gam1(generator);
+        T b = gam2(generator);
+        return a / (a + b);
+    }
+
+private:
+    std::gamma_distribution<T> gam1, gam2;
+};
+
+template<class T>
+class dirichlet_distribution {
+public:
+    dirichlet_distribution(std::vector<T> &prob) {
+        gammas.resize(prob.size());
+        for (size_t i = 0; i < prob.size(); i++)
+            gammas[i] = std::gamma_distribution<T>(prob[i]);
+    }
+
+    template<class TGenerator>
+    std::vector<T> operator()(TGenerator &generator) {
+        std::vector<T> result(gammas.size());
+        T sum = 0;
+        for (size_t n = 0; n < gammas.size(); n++)
+            sum += result[n] = gammas[n](generator);
+        for (auto &r: result)
+            r /= sum;
+        return std::move(result);
+    }
+
+private:
+    std::vector<std::gamma_distribution<T>> gammas;
+};
+
 #endif //FAST_HLDA2_UTILS_H

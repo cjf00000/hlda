@@ -6,29 +6,39 @@
 #define HLDA_IDPOOL_H
 
 #include <vector>
+#include <set>
 
 class IDPool {
 public:
     IDPool() { num_ids = 0; }
 
     int Allocate() {
+        int id;
         if (!free_ids.empty()) {
-            int id = free_ids.back();
+            id = free_ids.back();
             free_ids.pop_back();
-            return id;
+
         } else {
-            return num_ids++;
+            id = num_ids++;
         }
+        allocated_ids.insert(id);
+        return id;
     }
 
     void Free(int id) {
+        allocated_ids.erase(id);
         free_ids.push_back(id);
     }
 
     int Size() { return num_ids; }
 
+    bool Has(int id) {
+        return allocated_ids.find(id) != allocated_ids.end();
+    }
+
 private:
     std::vector<int> free_ids;
+    std::set<int> allocated_ids;
     int num_ids;
 };
 

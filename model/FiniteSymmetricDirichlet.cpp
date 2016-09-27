@@ -203,7 +203,7 @@ void FiniteSymmetricDirichlet::SamplePi() {
     }
 }
 
-TProb FiniteSymmetricDirichlet::WordScore(Document &doc, int l, int topic) {
+TProb FiniteSymmetricDirichlet::WordScore(Document &doc, int l, int topic, Tree::Node *node) {
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
 
