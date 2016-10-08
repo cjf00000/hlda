@@ -23,6 +23,10 @@ public:
         Resize(R, new_C);
     }
 
+    int GetR() { return R; }
+
+    int GetC() { return C; }
+
     void Resize(int new_R, int new_C) {
         if (new_R > R || new_C > C) {
             int old_R = R;

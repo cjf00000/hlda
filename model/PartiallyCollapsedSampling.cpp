@@ -5,13 +5,14 @@
 #include "PartiallyCollapsedSampling.h"
 #include "Clock.h"
 #include "corpus.h"
+#include <iostream>
 
 using namespace std;
 
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta, TProb gamma,
                                                        int num_iters) :
         CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters) {
-
+    current_it = -1;
 }
 
 void PartiallyCollapsedSampling::Initialize() {
@@ -21,11 +22,13 @@ void PartiallyCollapsedSampling::Initialize() {
 
 void PartiallyCollapsedSampling::Estimate() {
     for (int it = 0; it < num_iters; it++) {
+        current_it = it;
         Clock clk;
 
         for (auto &doc: docs) {
-            SampleC(doc, true);
-            SampleZ(doc, true);
+            // TODO examine if removing self matters
+            SampleC(doc, true, true);
+            SampleZ(doc, true, true);
         }
 
         SamplePhi();
@@ -39,10 +42,15 @@ void PartiallyCollapsedSampling::Estimate() {
     }
 }
 
-void PartiallyCollapsedSampling::SampleC(Document &doc, bool decrease_count) {
+void PartiallyCollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increase_count) {
     if (decrease_count) {
         UpdateDocCount(doc, -1);
         tree.UpdateNumDocs(doc.c.back(), -1);
+        for (auto *node: doc.c)
+            if (!node->is_collapsed && node->num_docs < 50) {
+                // Become collapsed
+                node->is_collapsed = true;
+            }
     }
 
     InitializeTreeWeight();
@@ -53,7 +61,7 @@ void PartiallyCollapsedSampling::SampleC(Document &doc, bool decrease_count) {
     tree.UpdateNumDocs(doc.c.back(), 1);
 }
 
-void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count) {
+void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increase_count) {
     std::vector<TCount> cdl((size_t) L);
     std::vector<TProb> prob((size_t) L);
     for (auto k: doc.z) cdl[k]++;
@@ -77,8 +85,11 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count) {
             if (is_collapsed[i])
                 prob[i] = (alpha + cdl[i]) *
                           (beta(v) + count(ids[i], v)) / (beta_bar + ck[ids[i]]);
-            else
+            else {
+                //if (current_it < 5)
+                //puts("What?1");
                 prob[i] = (alpha + cdl[i]) * phi(ids[i], v);
+            }
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
         doc.z[n] = l;
@@ -95,6 +106,9 @@ TProb PartiallyCollapsedSampling::WordScore(Document &doc,
     if (topic == -1 || node->is_collapsed)
         return CollapsedSampling::WordScore(doc, l, topic, node);
 
+    //if (current_it < 5)
+    //puts("What?2");
+
     // Not collapsed
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
@@ -110,11 +124,15 @@ TProb PartiallyCollapsedSampling::WordScore(Document &doc,
 void PartiallyCollapsedSampling::SamplePhi() {
     TTopic K = tree.GetMaxID();
     auto nodes = tree.GetAllNodes();
-    int threshold = 20;
+    int threshold = 0;
+    // TODO: Is it really correct to process collapsed and uncollapsed simutanaeously?
     for (auto *node: nodes)
-        if (ck[node->id] > threshold) {
+        if (ck[node->id] > threshold && current_it >= 0) {
             node->is_collapsed = false;
         }
+    for (auto *node: nodes)
+        cout << node->is_collapsed;
+    cout << endl;
 
     log_phi.SetR(K);
     phi.SetR(K);

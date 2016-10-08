@@ -17,9 +17,9 @@ public:
     void Estimate() override;
 
 private:
-    void SampleC(Document &doc, bool decrease_count) override;
+    void SampleC(Document &doc, bool decrease_count, bool increase_count) override;
 
-    void SampleZ(Document &doc, bool decrease_count) override;
+    void SampleZ(Document &doc, bool decrease_count, bool increase_count) override;
 
     void SamplePhi();
 

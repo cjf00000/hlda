@@ -12,9 +12,11 @@ int main() {
     cout << "Corpus read. " << corpus.T << " tokens " << endl;
 
     // Initialize model
+
+    // NIPS
     int L = 4;
     double alpha = 0.5;
-    double beta = 0.2;
+    double beta = 0.4;
     double gamma = 4.0;
     //double gamma = 0.001;
     int branching_factor = 0;

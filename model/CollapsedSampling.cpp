@@ -18,7 +18,10 @@ void CollapsedSampling::Initialize() {
     ck.resize(1);
     count.SetR(1);
     ck[0] = 0;
+    current_it = -1;
     ProgressivelyOnlineInitialize();
+
+    //printf("%lf %lf\n", beta(0), beta.Concentration());
 
     //auto bak = tree.gamma;
     //tree.gamma = 1e-9;
@@ -38,31 +41,43 @@ void CollapsedSampling::ProgressivelyOnlineInitialize() {
         for (auto &k: doc.z)
             k = generator() % L;
 
-        SampleC(doc, false);
-        SampleZ(doc, true);
+        SampleC(doc, false, true);
+        SampleZ(doc, true, true);
     }
 }
 
 void CollapsedSampling::Estimate() {
     for (int it = 0; it < num_iters; it++) {
+        current_it = it;
         Clock clk;
         Check();
 
         for (auto &doc: docs) {
-            SampleC(doc, true);
-            SampleZ(doc, true);
+            SampleC(doc, true, true);
+            SampleZ(doc, true, true);
         }
+        //Recount();
 
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
         auto nodes = tree.GetAllNodes();
-        printf("Iteration %d, %lu topics, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-               it, nodes.size(), time, throughput, perplexity);
+
+        int num_big_nodes = 0;
+        int num_docs_big = 0;
+        for (auto *node: nodes)
+            if (node->num_docs > 5) {
+                num_big_nodes++;
+                if (node->depth + 1 == L)
+                    num_docs_big += node->num_docs;
+            }
+
+        printf("Iteration %d, %lu topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, nodes.size(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
 }
 
-void CollapsedSampling::SampleZ(Document &doc, bool decrease_count) {
+void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increase_count) {
     TLen N = (TLen) doc.z.size();
     auto ids = doc.GetIDs();
     std::vector<TProb> prob((size_t) L);
@@ -86,15 +101,39 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count) {
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
 
-        ++count(ids[l], v);
-        ++ck[ids[l]];
-        ++cdl[l];
+        if (increase_count) {
+            ++count(ids[l], v);
+            ++ck[ids[l]];
+            ++cdl[l];
+        }
         doc.z[n] = l;
     }
 }
 
-void CollapsedSampling::SampleC(Document &doc, bool decrease_count) {
-    if (decrease_count) {
+void CollapsedSampling::Recount() {
+    int K = tree.GetMaxID();
+    count.SetR(K);
+    count.Clear();
+    ck.resize(K);
+    fill(ck.begin(), ck.end(), 0);
+    auto nodes = tree.GetAllNodes();
+    for (auto *node: nodes) node->num_docs = 0;
+
+    for (auto &doc: docs) {
+        auto ids = doc.GetIDs();
+        for (size_t n = 0; n < doc.w.size(); n++) {
+            ck[ids[doc.z[n]]]++;
+            count(ids[doc.z[n]], doc.w[n])++;
+        }
+        tree.UpdateNumDocs(doc.c.back(), 1);
+    }
+}
+
+void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increase_count) {
+    // Try delayed update for SampleC
+    bool delayed_update = false;
+    auto old_doc = doc;
+    if (decrease_count && !delayed_update) {
         UpdateDocCount(doc, -1);
         tree.UpdateNumDocs(doc.c.back(), -1);
     }
@@ -106,8 +145,15 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count) {
     DFSSample(doc);
 
     // Increase num_docs
-    UpdateDocCount(doc, 1);
-    tree.UpdateNumDocs(doc.c.back(), 1);
+    if (increase_count) {
+        UpdateDocCount(doc, 1);
+        tree.UpdateNumDocs(doc.c.back(), 1);
+    }
+
+    if (decrease_count && delayed_update) {
+        UpdateDocCount(old_doc, -1);
+        tree.UpdateNumDocs(old_doc.c.back(), -1);
+    }
 }
 
 TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *node) {
@@ -133,10 +179,17 @@ TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *
 }
 
 double CollapsedSampling::Perplexity() {
+    doc_avg_likelihood.resize(docs.size());
+    decltype(doc_avg_likelihood) new_dal;
+
     double log_likelihood = 0;
     std::vector<TProb> theta((size_t) L);
     double beta_bar = beta.Concentration();
+    size_t T = 0;
     for (auto &doc: docs) {
+        double old_log_likelihood = log_likelihood;
+
+        T += doc.z.size();
         // Compute theta
         for (auto k: doc.z) theta[k]++;
         double inv_sum = 1. / (doc.z.size() + alpha * L);
@@ -146,15 +199,53 @@ double CollapsedSampling::Perplexity() {
 
         for (size_t n = 0; n < doc.z.size(); n++) {
             double prob = 0;
+            TWord v = doc.w[n];
             for (int l = 0; l < L; l++) {
-                double phi = (count(ids[doc.z[n]], doc.w[n]) + beta(doc.w[n])) /
-                             (ck[ids[doc.z[n]]] + beta_bar);
+                double phi = (count(ids[l], v) + beta(v)) /
+                             (ck[ids[l]] + beta_bar);
                 prob += theta[l] * phi;
             }
             log_likelihood += log(prob);
         }
+
+        double new_doc_avg_likelihood = (log_likelihood - old_log_likelihood) / doc.z.size();
+        new_dal.push_back(new_doc_avg_likelihood);
     }
-    return exp(-log_likelihood / corpus.T);
+    // Compare new_dal with doc_avg_likelihood
+    std::vector<pair<double, size_t>> amt_increase;
+    for (size_t d = 0; d < docs.size(); d++)
+        amt_increase.push_back(make_pair(new_dal[d] - doc_avg_likelihood[d], d));
+
+    // TODO why the perplexity increase?
+    sort(amt_increase.begin(), amt_increase.end());
+    amt_increase.resize(10);
+    if (current_it > 0) {
+        ofstream fout(("log_" + to_string(current_it)).c_str());
+        for (int i = 0; i < 100; i++) {
+            auto d = amt_increase[i].second;
+            fout << d << ' ' << doc_avg_likelihood[d] << " -> " << new_dal[d]
+                 << " Old path: ";
+            for (int l = 0; l < L; l++)
+                fout << old_doc_ids[d][l] << ':' << old_doc_sizes[d][l] << ' ';
+
+            fout << " New path: ";
+            for (int l = 0; l < L; l++)
+                fout << docs[d].c[l]->id << ':' << docs[d].c[l]->num_docs << ' ';
+            fout << endl;
+        }
+    }
+
+    doc_avg_likelihood = new_dal;
+    old_doc_ids.resize(docs.size());
+    old_doc_sizes.resize(docs.size());
+    for (size_t d = 0; d < docs.size(); d++) {
+        old_doc_ids[d] = docs[d].GetIDs();
+        old_doc_sizes[d].resize((size_t) L);
+        for (int l = 0; l < L; l++)
+            old_doc_sizes[d][l] = docs[d].c[l]->num_docs;
+    }
+
+    return exp(-log_likelihood / T);
 }
 
 void CollapsedSampling::Check() {
@@ -194,6 +285,9 @@ void CollapsedSampling::DFSSample(Document &doc) {
         if (node->depth + 1 == L) {
             prob.push_back(node->sum_log_prob + node->sum_log_weight);
         } else {
+            /*if (current_it > 15)
+                prob.push_back(-1e9);
+            else*/
             prob.push_back(node->sum_log_prob + node->sum_log_weight +
                            emptyProbability[node->depth + 1]);
         }

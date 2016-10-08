@@ -19,9 +19,11 @@ public:
     virtual void Estimate();
 
 protected:
-    virtual void SampleZ(Document &doc, bool decrease_count);
+    virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count);
 
-    virtual void SampleC(Document &doc, bool decrease_count);
+    virtual void SampleC(Document &doc, bool decrease_count, bool increase_count);
+
+    virtual void Recount();
 
     void DFSSample(Document &doc) override;
 
@@ -34,6 +36,12 @@ protected:
     virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node);
 
     std::vector<TCount> ck;
+
+    int current_it;
+
+    std::vector<double> doc_avg_likelihood;
+    std::vector<std::vector<int>> old_doc_ids;
+    std::vector<std::vector<int>> old_doc_sizes;
 };
 
 
