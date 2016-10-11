@@ -11,8 +11,8 @@ using namespace std;
 
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta,
                                                        vector<TProb> gamma,
-                                                       int num_iters) :
-        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters) {
+                                                       int num_iters, int mc_samples) :
+        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {
     current_it = -1;
 }
 

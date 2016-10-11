@@ -11,8 +11,9 @@
 using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
-                                     TProb alpha, TProb beta, vector<TProb> gamma, int num_iters) :
-        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters) {}
+                                     TProb alpha, TProb beta, vector<TProb> gamma,
+                                     int num_iters, int mc_samples) :
+        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {}
 
 void CollapsedSampling::Initialize() {
     ck.resize(1);
@@ -284,21 +285,21 @@ void CollapsedSampling::Check() {
 }
 
 void CollapsedSampling::DFSSample(Document &doc) {
-    const int num_mc_samples = 5;
-
     auto nodes = tree.GetAllNodes();
     vector<TProb> prob(nodes.size(), -1e9);
 
     // Warning: this is not thread safe
-    vector<double> z_dist(L);
+    vector<double> z_dist((size_t) L);
     for (auto l: doc.z) z_dist[l]++;
     for (auto &d: z_dist) d = (d + alpha) / (doc.z.size() + alpha * L);
 
     discrete_distribution<int> mult(z_dist.begin(), z_dist.end());
-    for (int s = 0; s < num_mc_samples; s++) {
+    for (int s = 0; s < mc_samples; s++) {
         // Resample Z
         //for (auto &l: doc.z) l = mult(generator);
-        for (auto &l: doc.z) l = generator() % L;
+        if (mc_samples != -1) {
+            for (auto &l: doc.z) l = generator() % L;
+        }
         doc.PartitionWByZ(L);
 
         // Compute empty probability

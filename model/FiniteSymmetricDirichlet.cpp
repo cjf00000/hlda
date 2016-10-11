@@ -12,8 +12,8 @@ using namespace std;
 
 FiniteSymmetricDirichlet::FiniteSymmetricDirichlet(Corpus &corpus, int L,
                                                    TProb alpha, TProb beta, vector<TProb> gamma,
-                                                   int branching_factor, int num_iters) :
-        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters), branching_factor(branching_factor) {
+                                                   int branching_factor, int num_iters, int mc_samples) :
+        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), branching_factor(branching_factor) {
 
 }
 
