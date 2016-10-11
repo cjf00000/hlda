@@ -11,7 +11,7 @@
 using namespace std;
 
 FiniteSymmetricDirichlet::FiniteSymmetricDirichlet(Corpus &corpus, int L,
-                                                   TProb alpha, TProb beta, TProb gamma,
+                                                   TProb alpha, TProb beta, vector<TProb> gamma,
                                                    int branching_factor, int num_iters) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters), branching_factor(branching_factor) {
 
@@ -190,14 +190,15 @@ void FiniteSymmetricDirichlet::SamplePhi() {
 
 void FiniteSymmetricDirichlet::SamplePi() {
     auto nodes = tree.GetAllNodes();
-    for (auto *node: nodes) {
+    for (auto *node: nodes)
+        if (!node->children.empty()) {
         int num_children = (int) node->children.size();
-        TProb weight_sum = gamma;
+            TProb weight_sum = gamma[node->depth];
         for (auto *child: node->children)
             weight_sum += child->num_docs;
 
         TProb inv_weight_sum = 1. / weight_sum;
-        TProb smoothing = gamma / num_children;
+            TProb smoothing = gamma[node->depth] / num_children;
         for (auto *child: node->children)
             child->weight = (child->num_docs + smoothing) * inv_weight_sum;
     }

@@ -10,7 +10,7 @@
 class CollapsedSampling : public BaseHLDA {
 public:
     CollapsedSampling(Corpus &corpus, int L,
-                      TProb alpha, TProb beta, TProb gamma, int num_iters);
+                      TProb alpha, TProb beta, std::vector<TProb> gamma, int num_iters);
 
     void Initialize() override;
 
@@ -22,6 +22,8 @@ protected:
     virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count);
 
     virtual void SampleC(Document &doc, bool decrease_count, bool increase_count);
+
+    virtual void ResetZ(Document &doc);
 
     virtual void Recount();
 

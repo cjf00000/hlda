@@ -11,7 +11,7 @@
 class FiniteSymmetricDirichlet : public BaseHLDA {
 public:
     FiniteSymmetricDirichlet(Corpus &corpus, int L,
-                             TProb alpha, TProb beta, TProb gamma,
+                             TProb alpha, TProb beta, std::vector<TProb> gamma,
                              int branching_factor, int num_iters);
 
     void Initialize() override;

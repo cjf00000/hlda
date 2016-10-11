@@ -11,7 +11,7 @@
 using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
-                                     TProb alpha, TProb beta, TProb gamma, int num_iters) :
+                                     TProb alpha, TProb beta, vector<TProb> gamma, int num_iters) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters) {}
 
 void CollapsedSampling::Initialize() {
@@ -37,6 +37,7 @@ void CollapsedSampling::Initialize() {
 }
 
 void CollapsedSampling::ProgressivelyOnlineInitialize() {
+    cout << "Start initialize..." << endl;
     for (auto &doc: docs) {
         for (auto &k: doc.z)
             k = generator() % L;
@@ -44,6 +45,7 @@ void CollapsedSampling::ProgressivelyOnlineInitialize() {
         SampleC(doc, false, true);
         SampleZ(doc, true, true);
     }
+    cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
 }
 
 void CollapsedSampling::Estimate() {
@@ -52,6 +54,11 @@ void CollapsedSampling::Estimate() {
         Clock clk;
         Check();
 
+        /*if (it % 5 == 4 && it <= 20) {
+            printf("Resetting...\n");
+            for (auto &doc: docs)
+                ResetZ(doc);
+        }*/
         for (auto &doc: docs) {
             SampleC(doc, true, true);
             SampleZ(doc, true, true);
@@ -107,6 +114,22 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
             ++cdl[l];
         }
         doc.z[n] = l;
+    }
+}
+
+void CollapsedSampling::ResetZ(Document &doc) {
+    auto ids = doc.GetIDs();
+    for (size_t n = 0; n < doc.z.size(); n++) {
+        TWord v = doc.w[n];
+        TTopic l = doc.z[n];
+
+        --count(ids[l], v);
+        --ck[ids[l]];
+
+        l = doc.z[n] = generator() % L;
+
+        ++count(ids[l], v);
+        ++ck[ids[l]];
     }
 }
 
@@ -261,35 +284,48 @@ void CollapsedSampling::Check() {
 }
 
 void CollapsedSampling::DFSSample(Document &doc) {
+    const int num_mc_samples = 5;
+
     auto nodes = tree.GetAllNodes();
-    vector<TProb> prob;
-    prob.reserve(nodes.size());
-
-    doc.PartitionWByZ(L);
-
-    // Compute empty probability
-    vector<TProb> emptyProbability((size_t) L);
-    for (int l = 0; l < L; l++)
-        emptyProbability[l] = WordScore(doc, l, -1, nullptr);
-    for (int l = L - 2; l >= 0; l--)
-        emptyProbability[l] += emptyProbability[l + 1];
+    vector<TProb> prob(nodes.size(), -1e9);
 
     // Warning: this is not thread safe
-    for (auto *node: nodes) {
-        if (node->depth == 0)
-            node->sum_log_prob = WordScore(doc, node->depth, node->id, node);
-        else
-            node->sum_log_prob = node->parent->sum_log_prob +
-                                 WordScore(doc, node->depth, node->id, node);
+    vector<double> z_dist(L);
+    for (auto l: doc.z) z_dist[l]++;
+    for (auto &d: z_dist) d = (d + alpha) / (doc.z.size() + alpha * L);
 
-        if (node->depth + 1 == L) {
-            prob.push_back(node->sum_log_prob + node->sum_log_weight);
-        } else {
-            /*if (current_it > 15)
-                prob.push_back(-1e9);
-            else*/
-            prob.push_back(node->sum_log_prob + node->sum_log_weight +
-                           emptyProbability[node->depth + 1]);
+    discrete_distribution<int> mult(z_dist.begin(), z_dist.end());
+    for (int s = 0; s < num_mc_samples; s++) {
+        // Resample Z
+        //for (auto &l: doc.z) l = mult(generator);
+        for (auto &l: doc.z) l = generator() % L;
+        doc.PartitionWByZ(L);
+
+        // Compute empty probability
+        vector<TProb> emptyProbability((size_t) L);
+        for (int l = 0; l < L; l++)
+            emptyProbability[l] = WordScore(doc, l, -1, nullptr);
+        for (int l = L - 2; l >= 0; l--)
+            emptyProbability[l] += emptyProbability[l + 1];
+
+        for (size_t i = 0; i < nodes.size(); i++) {
+            auto *node = nodes[i];
+
+            if (node->depth == 0)
+                node->sum_log_prob = WordScore(doc, node->depth, node->id, node);
+            else
+                node->sum_log_prob = node->parent->sum_log_prob +
+                                     WordScore(doc, node->depth, node->id, node);
+
+            if (node->depth + 1 == L) {
+                prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight);
+            } else {
+                /*if (current_it > 15)
+                    prob.push_back(-1e9);
+                else*/
+                prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight +
+                                          emptyProbability[node->depth + 1]);
+            }
         }
     }
 

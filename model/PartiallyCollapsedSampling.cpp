@@ -9,7 +9,8 @@
 
 using namespace std;
 
-PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta, TProb gamma,
+PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta,
+                                                       vector<TProb> gamma,
                                                        int num_iters) :
         CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters) {
     current_it = -1;
@@ -25,6 +26,11 @@ void PartiallyCollapsedSampling::Estimate() {
         current_it = it;
         Clock clk;
 
+        if (it == pow(floor(sqrt(it)), 2) && it >= 3) {
+            printf("Resetting...\n");
+            for (auto &doc: docs)
+                ResetZ(doc);
+        }
         for (auto &doc: docs) {
             // TODO examine if removing self matters
             SampleC(doc, true, true);

@@ -10,9 +10,9 @@
 using namespace std;
 
 BaseHLDA::BaseHLDA(Corpus &corpus, int L,
-                   TProb alpha, TProb beta, TProb gamma,
+                   TProb alpha, TProb beta, vector<TProb> gamma,
                    int num_iters) :
-        tree(L, gamma),
+        tree(L, gamma.back()),
         corpus(corpus), L(L), alpha(alpha), beta(corpus.V, beta), gamma(gamma),
         num_iters(num_iters),
         phi(0, corpus.V), log_phi(0, corpus.V), count(0, corpus.V) {
@@ -133,7 +133,8 @@ void BaseHLDA::InitializeTreeWeight() {
     for (auto *node: nodes)
         if (!node->children.empty()) {
             // Propagate
-            double sum_weight = gamma;
+            double sum_weight = gamma[node->depth];
+
             for (auto *child: node->children)
                 sum_weight += child->num_docs;
 
@@ -141,6 +142,6 @@ void BaseHLDA::InitializeTreeWeight() {
                 child->sum_log_weight = node->sum_log_weight +
                                         log((child->num_docs + 1e-10) / sum_weight);
 
-            node->sum_log_weight += log(gamma / sum_weight) * (L - node->depth - 1);
+            node->sum_log_weight += log(gamma[node->depth] / sum_weight);
         }
 }
