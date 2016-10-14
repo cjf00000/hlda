@@ -69,6 +69,8 @@ public:
 
     void GetPath(Node *leaf, Path &path);
 
+    Node *GetRoot() { return root; }
+
     int L;
     double gamma;
 

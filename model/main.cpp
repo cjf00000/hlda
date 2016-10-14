@@ -2,7 +2,7 @@
 #include "corpus.h"
 #include "FiniteSymmetricDirichlet.h"
 #include "CollapsedSampling.h"
-#include "PartiallyCollapsedSampling.h"
+#include "ExternalHLDA.h"
 
 using namespace std;
 
@@ -42,8 +42,9 @@ int main() {
     // FSD
     //auto *model1 = new FiniteSymmetricDirichlet(corpus, L, alpha, beta, gamma, branching_factor, num_iters, mc_samples);
     //auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples);
-    auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma,
-                                                  num_iters, mc_samples, minibatch_size);
+    //auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, minibatch_size);
+    auto *model1 = new ExternalHLDA(corpus, L, 0.5, 0.2, std::vector<double>{1e-20, 1e-20, 1e-20},
+                                    "/home/jianfei/Projects/hlda-c/out/run014");
     model1->Initialize();
     model1->Estimate();
 

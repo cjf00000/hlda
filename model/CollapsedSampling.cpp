@@ -228,6 +228,7 @@ double CollapsedSampling::Perplexity() {
                 double phi = (count(ids[l], v) + beta(v)) /
                              (ck[ids[l]] + beta_bar);
                 prob += theta[l] * phi;
+                //prob += phi;
             }
             log_likelihood += log(prob);
         }
