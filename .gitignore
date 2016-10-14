@@ -2,3 +2,7 @@
 *.png
 gflags
 .idea
+*.swp
+*.txt
+log_*
+*.swo
