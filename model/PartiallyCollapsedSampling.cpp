@@ -9,7 +9,7 @@
 
 using namespace std;
 
-PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta,
+PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, vector<TProb> beta,
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples,
                                                        size_t minibatch_size) :
@@ -115,8 +115,6 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
     std::vector<bool> is_collapsed((size_t) L);
     for (int l = 0; l < L; l++) is_collapsed[l] = doc.c[l]->is_collapsed;
 
-    TProb beta_bar = beta.Concentration();
-
     for (size_t n = 0; n < doc.z.size(); n++) {
         TWord v = doc.w[n];
         TTopic l = doc.z[n];
@@ -129,7 +127,7 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
         for (TLen i = 0; i < L; i++)
             if (is_collapsed[i])
                 prob[i] = (alpha + cdl[i]) *
-                          (beta(v) + count(ids[i], v)) / (beta_bar + ck[ids[i]]);
+                          (beta[i] + count(ids[i], v)) / (beta[i] * corpus.V + ck[ids[i]]);
             else {
                 //if (current_it < 5)
                 //puts("What?1");
@@ -182,11 +180,15 @@ void PartiallyCollapsedSampling::SamplePhi() {
 
     log_phi.SetR(K);
     phi.SetR(K);
-    for (TTopic k = 0; k < K; k++) {
-        double inv_sum = 1. / (beta.Concentration() + ck[k]);
+
+    for (auto *node: nodes) {
+        TTopic k = node->id;
+        TProb b = beta[node->depth];
+
+        double inv_sum = 1. / (b * corpus.V + ck[k]);
 
         for (TWord v = 0; v < corpus.V; v++) {
-            double prob = (count(k, v) + beta(v)) * inv_sum;
+            double prob = (count(k, v) + b) * inv_sum;
             phi(k, v) = prob;
             log_phi(k, v) = log(prob);
         }

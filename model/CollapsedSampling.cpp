@@ -11,7 +11,7 @@
 using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
-                                     TProb alpha, TProb beta, vector<TProb> gamma,
+                                     TProb alpha, std::vector<TProb> beta, vector<TProb> gamma,
                                      int num_iters, int mc_samples) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {}
 
@@ -91,7 +91,6 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
     std::vector<TProb> prob((size_t) L);
     std::vector<TCount> cdl((size_t) L);
     for (auto l: doc.z) cdl[l]++;
-    TProb beta_bar = beta.Concentration();
 
     for (TLen n = 0; n < N; n++) {
         TWord v = doc.w[n];
@@ -105,7 +104,7 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
 
         for (TTopic i = 0; i < L; i++)
             prob[i] = (cdl[i] + alpha) *
-                      (count(ids[i], v) + beta(v)) / (ck[ids[i]] + beta_bar);
+                      (count(ids[i], v) + beta[i]) / (ck[ids[i]] + beta[i] * corpus.V);
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
 
@@ -183,7 +182,6 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increas
 TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *node) {
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
-    double beta_bar = beta.Concentration();
 
     decltype(b) w_next = nullptr;
     double result = 0;
@@ -192,12 +190,12 @@ TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *
         int w_count = (int) (w_next - w);
 
         int cnt = topic == -1 ? 0 : count(topic, *w);
-        result += LogGammaDifference(cnt + beta(*w), w_count);
+        result += LogGammaDifference(cnt + beta[l], w_count);
     }
 
     int w_count = (int) (e - b);
     int cnt = topic == -1 ? 0 : ck[topic];
-    result -= lgamma(cnt + beta_bar + w_count) - lgamma(cnt + beta_bar);
+    result -= lgamma(cnt + beta[l] * corpus.V + w_count) - lgamma(cnt + beta[l] * corpus.V);
 
     return result;
 }
@@ -208,7 +206,7 @@ double CollapsedSampling::Perplexity() {
 
     double log_likelihood = 0;
     std::vector<TProb> theta((size_t) L);
-    double beta_bar = beta.Concentration();
+
     size_t T = 0;
     for (auto &doc: docs) {
         double old_log_likelihood = log_likelihood;
@@ -225,8 +223,8 @@ double CollapsedSampling::Perplexity() {
             double prob = 0;
             TWord v = doc.w[n];
             for (int l = 0; l < L; l++) {
-                double phi = (count(ids[l], v) + beta(v)) /
-                             (ck[ids[l]] + beta_bar);
+                double phi = (count(ids[l], v) + beta[l]) /
+                             (ck[ids[l]] + beta[l] * corpus.V);
                 prob += theta[l] * phi;
                 //prob += phi;
             }

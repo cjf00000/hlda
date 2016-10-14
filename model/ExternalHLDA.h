@@ -12,7 +12,7 @@
 class ExternalHLDA : public CollapsedSampling {
 public:
     ExternalHLDA(Corpus &corpus, int L,
-                 TProb alpha, TProb beta, std::vector<TProb> gamma,
+                 TProb alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
                  std::string prefix);
 
     void Initialize();

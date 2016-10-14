@@ -10,7 +10,7 @@
 class PartiallyCollapsedSampling : public CollapsedSampling {
 public:
     PartiallyCollapsedSampling(Corpus &corpus, int L,
-                               TProb alpha, TProb beta, std::vector<TProb> gamma,
+                               TProb alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
                                int num_iters, int mc_samples, size_t minibatch_size);
 
     void Initialize() override;

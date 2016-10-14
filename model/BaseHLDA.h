@@ -20,7 +20,7 @@ class BaseHLDA {
 
 public:
     BaseHLDA(Corpus &corpus, int L,
-             TProb alpha, TProb beta, std::vector<TProb> gamma,
+             TProb alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
              int num_iters, int mc_samples);
 
     virtual void Initialize();
@@ -43,7 +43,7 @@ protected:
     Corpus &corpus;
     int L;
     TProb alpha;
-    DirichletParameter beta;
+    std::vector<TProb> beta;        // Beta for each layer
     std::vector<TProb> gamma;
     int num_iters, mc_samples;
     xorshift generator;

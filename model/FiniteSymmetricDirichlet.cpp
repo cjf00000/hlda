@@ -11,7 +11,7 @@
 using namespace std;
 
 FiniteSymmetricDirichlet::FiniteSymmetricDirichlet(Corpus &corpus, int L,
-                                                   TProb alpha, TProb beta, vector<TProb> gamma,
+                                                   TProb alpha, std::vector<TProb> beta, vector<TProb> gamma,
                                                    int branching_factor, int num_iters, int mc_samples) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), branching_factor(branching_factor) {
 
@@ -175,13 +175,13 @@ void FiniteSymmetricDirichlet::SamplePhi() {
     log_phi.SetR(tree.GetMaxID());
     phi.SetR(tree.GetMaxID());
     for (TTopic k = 0; k < K; k++) {
-        double sum = beta.Concentration();
+        double sum = beta[k] * corpus.V;
         for (TWord v = 0; v < corpus.V; v++)
             sum += count(k, v);
 
         sum = 1. / sum;
         for (TWord v = 0; v < corpus.V; v++) {
-            double prob = (count(k, v) + beta(v)) * sum;
+            double prob = (count(k, v) + beta[k]) * sum;
             phi(k, v) = prob;
             log_phi(k, v) = log(prob);
         }
@@ -275,7 +275,7 @@ void FiniteSymmetricDirichlet::InitializeBeta() {
         for (auto w: doc.w)
             tf[w]++;
 
-    beta.Set(tf, beta.Concentration());
+    //beta.Set(tf, beta.Concentration());
 }
 
 void FiniteSymmetricDirichlet::LayerwiseInitialize(FiniteSymmetricDirichlet &model) {
