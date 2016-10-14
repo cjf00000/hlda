@@ -11,13 +11,41 @@ using namespace std;
 
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, TProb beta,
                                                        vector<TProb> gamma,
-                                                       int num_iters, int mc_samples) :
-        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {
+                                                       int num_iters, int mc_samples,
+                                                       size_t minibatch_size) :
+        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples),
+        minibatch_size(minibatch_size) {
     current_it = -1;
 }
 
 void PartiallyCollapsedSampling::Initialize() {
-    CollapsedSampling::Initialize();
+    //CollapsedSampling::Initialize();
+    ck.resize(1);
+    count.SetR(1);
+    ck[0] = 0;
+    current_it = -1;
+
+    cout << "Start initialize..." << endl;
+    if (minibatch_size == 0)
+        minibatch_size = docs.size();
+
+    for (size_t d_start = 0; d_start < docs.size(); d_start += minibatch_size) {
+        size_t d_end = min(docs.size(), d_start + minibatch_size);
+        for (size_t d = d_start; d < d_end; d++) {
+            auto &doc = docs[d];
+
+            for (auto &k: doc.z)
+                k = generator() % L;
+
+            SampleC(doc, false, true);
+            SampleZ(doc, true, true);
+        }
+        SamplePhi();
+
+        printf("Processed %lu documents\n", d_end);
+    }
+    cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
+
     SamplePhi();
 }
 
@@ -26,11 +54,11 @@ void PartiallyCollapsedSampling::Estimate() {
         current_it = it;
         Clock clk;
 
-        if (it == pow(floor(sqrt(it)), 2) && it >= 3) {
+        /*if (it == pow(floor(sqrt(it)), 2) && it >= 3) {
             printf("Resetting...\n");
             for (auto &doc: docs)
                 ResetZ(doc);
-        }
+        }*/
         for (auto &doc: docs) {
             // TODO examine if removing self matters
             SampleC(doc, true, true);
@@ -39,12 +67,23 @@ void PartiallyCollapsedSampling::Estimate() {
 
         SamplePhi();
 
+        auto nodes = tree.GetAllNodes();
+        int num_big_nodes = 0;
+        int num_docs_big = 0;
+        for (auto *node: nodes)
+            if (node->num_docs > 5) {
+                num_big_nodes++;
+                if (node->depth + 1 == L)
+                    num_docs_big += node->num_docs;
+            }
+
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
-        auto nodes = tree.GetAllNodes();
-        printf("Iteration %d, %lu topics, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-               it, nodes.size(), time, throughput, perplexity);
+        //printf("Iteration %d, %lu topics, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+        //       it, nodes.size(), time, throughput, perplexity);
+        printf("Iteration %d, %lu topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, nodes.size(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
 }
 
@@ -130,10 +169,11 @@ TProb PartiallyCollapsedSampling::WordScore(Document &doc,
 void PartiallyCollapsedSampling::SamplePhi() {
     TTopic K = tree.GetMaxID();
     auto nodes = tree.GetAllNodes();
-    int threshold = 0;
+    int threshold = 50;
     // TODO: Is it really correct to process collapsed and uncollapsed simutanaeously?
     for (auto *node: nodes)
-        if (ck[node->id] > threshold && current_it >= 0) {
+        //if (node->num_docs > threshold && current_it >= -1) {
+        if (node->num_docs > threshold) {
             node->is_collapsed = false;
         }
     for (auto *node: nodes)

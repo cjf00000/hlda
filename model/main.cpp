@@ -2,6 +2,7 @@
 #include "corpus.h"
 #include "FiniteSymmetricDirichlet.h"
 #include "CollapsedSampling.h"
+#include "PartiallyCollapsedSampling.h"
 
 using namespace std;
 
@@ -33,14 +34,16 @@ int main() {
 
     int num_iters = 30;
     int mc_samples = 5;
+    size_t minibatch_size = 200;
 
     // Problem 1: there are too much topics during initialization
     // Problem 2: it cannot produce new topics...
 
     // FSD
     //auto *model1 = new FiniteSymmetricDirichlet(corpus, L, alpha, beta, gamma, branching_factor, num_iters, mc_samples);
-    auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples);
-    //auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples);
+    //auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples);
+    auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma,
+                                                  num_iters, mc_samples, minibatch_size);
     model1->Initialize();
     model1->Estimate();
 

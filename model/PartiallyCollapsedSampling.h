@@ -11,7 +11,7 @@ class PartiallyCollapsedSampling : public CollapsedSampling {
 public:
     PartiallyCollapsedSampling(Corpus &corpus, int L,
                                TProb alpha, TProb beta, std::vector<TProb> gamma,
-                               int num_iters, int mc_samples);
+                               int num_iters, int mc_samples, size_t minibatch_size);
 
     void Initialize() override;
 
@@ -25,6 +25,8 @@ private:
     void SamplePhi();
 
     TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) override;
+
+    size_t minibatch_size;
 };
 
 
