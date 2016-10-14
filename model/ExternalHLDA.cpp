@@ -45,10 +45,10 @@ void ExternalHLDA::ReadTree() {
     nodes.push_back(tree.GetRoot());
     while (getline(fin, line)) {
         istringstream sin(line);
-        int node_id, parent_id;
+        int node_id, parent_id, ndocs;
         double dummy;
         int c;
-        sin >> node_id >> parent_id >> dummy >> dummy >> dummy;
+        sin >> node_id >> parent_id >> ndocs >> dummy >> dummy;
 
         node_id = GetID(node_id_map, node_id);
         if (parent_id != -1) parent_id = GetID(node_id_map, parent_id);
@@ -57,6 +57,7 @@ void ExternalHLDA::ReadTree() {
             // Add link
             nodes.push_back(tree.AddChildren(nodes[parent_id]));
         }
+        nodes.back()->num_docs = ndocs;
 
         // Read Count matrix
         TTopic k = (TTopic) nodes.size();
