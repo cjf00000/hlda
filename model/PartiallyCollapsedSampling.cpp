@@ -9,7 +9,7 @@
 
 using namespace std;
 
-PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, TProb alpha, vector<TProb> beta,
+PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, vector<TProb> alpha, vector<TProb> beta,
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples,
                                                        size_t minibatch_size) :
@@ -126,12 +126,12 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
 
         for (TLen i = 0; i < L; i++)
             if (is_collapsed[i])
-                prob[i] = (alpha + cdl[i]) *
+                prob[i] = (alpha[i] + cdl[i]) *
                           (beta[i] + count(ids[i], v)) / (beta[i] * corpus.V + ck[ids[i]]);
             else {
                 //if (current_it < 5)
                 //puts("What?1");
-                prob[i] = (alpha + cdl[i]) * phi(ids[i], v);
+                prob[i] = (alpha[i] + cdl[i]) * phi(ids[i], v);
             }
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);

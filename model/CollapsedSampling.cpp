@@ -11,7 +11,7 @@
 using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
-                                     TProb alpha, std::vector<TProb> beta, vector<TProb> gamma,
+                                     std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
                                      int num_iters, int mc_samples) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {}
 
@@ -103,7 +103,7 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
         }
 
         for (TTopic i = 0; i < L; i++)
-            prob[i] = (cdl[i] + alpha) *
+            prob[i] = (cdl[i] + alpha[i]) *
                       (count(ids[i], v) + beta[i]) / (ck[ids[i]] + beta[i] * corpus.V);
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
@@ -214,8 +214,9 @@ double CollapsedSampling::Perplexity() {
         T += doc.z.size();
         // Compute theta
         for (auto k: doc.z) theta[k]++;
-        double inv_sum = 1. / (doc.z.size() + alpha * L);
-        for (auto &t: theta) t = (t + alpha) * inv_sum;
+        double inv_sum = 1. / (doc.z.size() + alpha_bar);
+        for (TLen l = 0; l < L; l++)
+            theta[l] = (theta[l] + alpha[l]) * inv_sum;
 
         auto ids = doc.GetIDs();
 
@@ -288,11 +289,8 @@ void CollapsedSampling::DFSSample(Document &doc) {
     vector<TProb> prob(nodes.size(), -1e9);
 
     // Warning: this is not thread safe
-    vector<double> z_dist((size_t) L);
-    for (auto l: doc.z) z_dist[l]++;
-    for (auto &d: z_dist) d = (d + alpha) / (doc.z.size() + alpha * L);
 
-    discrete_distribution<int> mult(z_dist.begin(), z_dist.end());
+    // TODO implement correct dirichlet-multinomial sampling
     for (int s = 0; s < mc_samples; s++) {
         // Resample Z
         //for (auto &l: doc.z) l = mult(generator);

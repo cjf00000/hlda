@@ -10,7 +10,7 @@
 using namespace std;
 
 BaseHLDA::BaseHLDA(Corpus &corpus, int L,
-                   TProb alpha, std::vector<TProb> beta, vector<TProb> gamma,
+                   std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
                    int num_iters, int mc_samples) :
         tree(L, gamma.back()),
         corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
@@ -24,6 +24,7 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
         doc.z.resize(doc.w.size());
         doc.c.resize((size_t) L);
     }
+    alpha_bar = accumulate(alpha.begin(), alpha.end(), 0.0);
 }
 
 void BaseHLDA::Initialize() {

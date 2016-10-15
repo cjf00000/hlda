@@ -11,7 +11,9 @@
 using namespace std;
 
 FiniteSymmetricDirichlet::FiniteSymmetricDirichlet(Corpus &corpus, int L,
-                                                   TProb alpha, std::vector<TProb> beta, vector<TProb> gamma,
+                                                   std::vector<TProb> alpha,
+                                                   std::vector<TProb> beta,
+                                                   vector<TProb> gamma,
                                                    int branching_factor, int num_iters, int mc_samples) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), branching_factor(branching_factor) {
 
@@ -165,9 +167,9 @@ void FiniteSymmetricDirichlet::SampleTheta(Document &doc) {
     for (auto k: doc.z)
         doc.theta[k]++;
 
-    double normalizing_constant = 1. / (N + alpha * L);
+    double normalizing_constant = 1. / (N + alpha_bar);
     for (int l = 0; l < L; l++)
-        doc.theta[l] = (doc.theta[l] + alpha) * normalizing_constant;
+        doc.theta[l] = (doc.theta[l] + alpha[l]) * normalizing_constant;
 }
 
 void FiniteSymmetricDirichlet::SamplePhi() {

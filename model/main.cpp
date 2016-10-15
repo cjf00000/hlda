@@ -25,12 +25,12 @@ int main() {
     Corpus corpus("data/nysmaller.vocab", "data/nysmaller.libsvm.train");
     cout << "Corpus read. " << corpus.T << " tokens " << endl;
     int L = 4;
-    double alpha = 0.5;
-    std::vector<double> beta{0.8, 0.5, 0.3, 0.2};
+    std::vector<double> alpha{0.5, 0.5, 0.5, 0.5};
+    std::vector<double> beta{1, 0.5, 0.25, 0.25};
     //double beta = 0.2;
     //double gamma = 4.0;
     //double gamma = 0.001;
-    std::vector<double> gamma{1e-60, 1e-50, 1e-30};
+    std::vector<double> gamma{1e-20, 1e-20, 1e-20};
     int branching_factor = 0;
 
     int num_iters = 30;
@@ -44,8 +44,7 @@ int main() {
     //auto *model1 = new FiniteSymmetricDirichlet(corpus, L, alpha, beta, gamma, branching_factor, num_iters, mc_samples);
     //auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples);
     auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, minibatch_size);
-    //auto *model1 = new ExternalHLDA(corpus, L, 0.5, 0.2, std::vector<double>{1e-20, 1e-20, 1e-20},
-    //                                "/home/jianfei/Projects/hlda-c/out/run014");
+    //auto *model1 = new ExternalHLDA(corpus, L, 0.5, std::vector<double>{1.0, 0.5, 0.25, 0.25}, std::vector<double>{1e-20, 1e-20, 1e-20}, "/home/jianfei/Projects/hlda-c/out/run014");
     model1->Initialize();
     model1->Estimate();
 
