@@ -12,9 +12,9 @@ using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
-                                     int num_iters, int mc_samples, int anneal_iters) :
+                                     int num_iters, int mc_samples, int remove_iters, int remove_paths) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples),
-        anneal_iters(anneal_iters) {}
+        remove_iters(remove_iters), remove_paths(remove_paths) {}
 
 void CollapsedSampling::Initialize() {
     ck.resize(1);
@@ -64,7 +64,7 @@ void CollapsedSampling::Estimate() {
             for (auto &doc: docs)
                 ResetZ(doc);
         }*/
-        if (current_it <= anneal_iters && current_it >= 5)
+        if (current_it <= remove_iters)
             RemovePath();
 
         for (auto &doc: docs) {
@@ -104,11 +104,6 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
     std::vector<TProb> prob((size_t) L);
     std::vector<TCount> cdl((size_t) L);
     for (auto l: doc.z) cdl[l]++;
-
-    double anneal_start = 0.8;
-    double anneal_rate = 1;
-    if (anneal_iters != -1)
-        anneal_rate = min(anneal_start + (1 - anneal_start) / (anneal_iters + 1) * (current_it + 1), 1.0);
 
     for (TLen n = 0; n < N; n++) {
         TWord v = doc.w[n];
@@ -356,15 +351,6 @@ void CollapsedSampling::DFSSample(Document &doc) {
         }
     }
 
-    // -1: 0.5, iter: 1
-    /*
-    double anneal_start = 0.5;
-    double anneal_rate = 1;
-    if (anneal_iters!=-1)
-        anneal_rate = min(anneal_start + (1-anneal_start)/(anneal_iters+1)*(current_it+1), 1.0);
-
-    for (auto &p: prob) p *= anneal_rate;*/
-
     // Sample
     Softmax(prob.begin(), prob.end());
     int node_number = DiscreteSample(prob.begin(), prob.end(), generator);
@@ -394,11 +380,10 @@ void CollapsedSampling::UpdateDocCount(Document &doc, int delta) {
 }
 
 void CollapsedSampling::RemovePath() {
-    // Randomly delete 3 paths
     auto nodes = tree.GetAllNodes();
     vector<bool> selected(nodes.size(), false);
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < remove_paths; i++) {
         // Select a path to remove
         int index;
         do {
@@ -407,6 +392,7 @@ void CollapsedSampling::RemovePath() {
         selected[index] = true;
 
         auto *node = nodes[index];
+        node->is_collapsed = true;
 
         // Reset corresponding documents
         for (auto &doc: docs) {

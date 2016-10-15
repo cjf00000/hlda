@@ -11,7 +11,8 @@ class PartiallyCollapsedSampling : public CollapsedSampling {
 public:
     PartiallyCollapsedSampling(Corpus &corpus, int L,
                                std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
-                               int num_iters, int mc_samples, size_t minibatch_size, int anneal_iters);
+                               int num_iters, int mc_samples, size_t minibatch_size,
+                               int remove_iters, int remove_paths);
 
     void Initialize() override;
 

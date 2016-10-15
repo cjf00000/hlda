@@ -12,8 +12,9 @@ using namespace std;
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, vector<TProb> alpha, vector<TProb> beta,
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples,
-                                                       size_t minibatch_size, int anneal_iters) :
-        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, anneal_iters),
+                                                       size_t minibatch_size,
+                                                       int remove_iters, int remove_paths) :
+        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, remove_iters, remove_paths),
         minibatch_size(minibatch_size) {
     current_it = -1;
 }
@@ -59,13 +60,31 @@ void PartiallyCollapsedSampling::Estimate() {
             for (auto &doc: docs)
                 ResetZ(doc);
         }*/
+        if (current_it <= remove_iters)
+            RemovePath();
+        if (current_it >= 20)
+            mc_samples = -1;
+
+        SamplePhi();
+
         for (auto &doc: docs) {
-            // TODO examine if removing self matters
-            SampleC(doc, true, true);
-            SampleZ(doc, true, true);
+            if (doc.initialized) {
+                SampleC(doc, true, true);
+                SampleZ(doc, true, true);
+            }
         }
 
         SamplePhi();
+
+        for (auto &doc: docs) {
+            if (!doc.initialized) {
+                doc.initialized = true;
+                SampleC(doc, false, true);
+                SampleZ(doc, true, true);
+            }
+        }
+
+        //SamplePhi();
 
         auto nodes = tree.GetAllNodes();
         int num_big_nodes = 0;
@@ -141,11 +160,11 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
         ++count(ids[l], v);
         ++ck[ids[l]];
     }
-    double sum = 0;
+    /*double sum = 0;
     for (TLen l = 0; l < L; l++)
         sum += (doc.theta[l] = cdl[l] + alpha[l]);
     for (TLen l = 0; l < L; l++)
-        doc.theta[l] /= sum;
+        doc.theta[l] /= sum;*/
 }
 
 TProb PartiallyCollapsedSampling::WordScore(Document &doc,
@@ -175,10 +194,8 @@ void PartiallyCollapsedSampling::SamplePhi() {
     int threshold = 50;
     // TODO: Is it really correct to process collapsed and uncollapsed simutanaeously?
     for (auto *node: nodes)
-        //if (node->num_docs > threshold && current_it >= -1) {
-        if (node->num_docs > threshold) {
-            node->is_collapsed = false;
-        }
+        node->is_collapsed = node->num_docs < threshold;
+
     for (auto *node: nodes)
         cout << node->is_collapsed;
     cout << endl;

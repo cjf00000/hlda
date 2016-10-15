@@ -11,7 +11,7 @@ class CollapsedSampling : public BaseHLDA {
 public:
     CollapsedSampling(Corpus &corpus, int L,
                       std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
-                      int num_iters, int mc_samples, int anneal_iters);
+                      int num_iters, int mc_samples, int remove_iters, int remove_paths);
 
     void Initialize() override;
 
@@ -42,7 +42,7 @@ protected:
 
     std::vector<TCount> ck;
 
-    int current_it, anneal_iters;
+    int current_it, remove_iters, remove_paths;
 
     std::vector<double> doc_avg_likelihood;
     std::vector<std::vector<int>> old_doc_ids;
