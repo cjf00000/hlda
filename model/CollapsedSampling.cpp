@@ -12,14 +12,16 @@ using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
-                                     int num_iters, int mc_samples) :
-        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples) {}
+                                     int num_iters, int mc_samples, int anneal_iters) :
+        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples),
+        anneal_iters(anneal_iters) {}
 
 void CollapsedSampling::Initialize() {
     ck.resize(1);
     count.SetR(1);
     ck[0] = 0;
     current_it = -1;
+
     ProgressivelyOnlineInitialize();
 
     //printf("%lf %lf\n", beta(0), beta.Concentration());
@@ -54,15 +56,26 @@ void CollapsedSampling::Estimate() {
         current_it = it;
         Clock clk;
         Check();
+        if (current_it >= 20)
+            mc_samples = -1;
 
         /*if (it % 5 == 4 && it <= 20) {
             printf("Resetting...\n");
             for (auto &doc: docs)
                 ResetZ(doc);
         }*/
+        if (current_it <= anneal_iters && current_it >= 5)
+            RemovePath();
+
         for (auto &doc: docs) {
-            SampleC(doc, true, true);
-            SampleZ(doc, true, true);
+            if (doc.initialized) {
+                SampleC(doc, true, true);
+                SampleZ(doc, true, true);
+            } else {
+                doc.initialized = true;
+                SampleC(doc, false, true);
+                SampleZ(doc, true, true);
+            }
         }
         //Recount();
 
@@ -92,6 +105,11 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
     std::vector<TCount> cdl((size_t) L);
     for (auto l: doc.z) cdl[l]++;
 
+    double anneal_start = 0.8;
+    double anneal_rate = 1;
+    if (anneal_iters != -1)
+        anneal_rate = min(anneal_start + (1 - anneal_start) / (anneal_iters + 1) * (current_it + 1), 1.0);
+
     for (TLen n = 0; n < N; n++) {
         TWord v = doc.w[n];
         TTopic l = doc.z[n];
@@ -115,6 +133,11 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
         }
         doc.z[n] = l;
     }
+    double sum = 0;
+    for (TLen l = 0; l < L; l++)
+        sum += (doc.theta[l] = cdl[l] + alpha[l]);
+    for (TLen l = 0; l < L; l++)
+        doc.theta[l] /= sum;
 }
 
 void CollapsedSampling::ResetZ(Document &doc) {
@@ -291,14 +314,13 @@ void CollapsedSampling::DFSSample(Document &doc) {
     // Warning: this is not thread safe
 
     //std::vector<TProb> myalpha{100, 100, 100, 100};
-    dirichlet_distribution<TProb> dir(alpha);
+    //dirichlet_distribution<TProb> dir(alpha);
     for (int s = 0; s < max(mc_samples, 1); s++) {
         // Resample Z
         // Random Dirichlet
 
-        auto theta = dir(generator);
-        //discrete_distribution<int> mult(theta.begin(), theta.end());
-        discrete_distribution<int> mult(alpha.begin(), alpha.end());
+        discrete_distribution<int> mult(doc.theta.begin(), doc.theta.end());
+        //discrete_distribution<int> mult(alpha.begin(), alpha.end());
 
         // Random multinomial
         if (mc_samples != -1) {
@@ -334,6 +356,15 @@ void CollapsedSampling::DFSSample(Document &doc) {
         }
     }
 
+    // -1: 0.5, iter: 1
+    /*
+    double anneal_start = 0.5;
+    double anneal_rate = 1;
+    if (anneal_iters!=-1)
+        anneal_rate = min(anneal_start + (1-anneal_start)/(anneal_iters+1)*(current_it+1), 1.0);
+
+    for (auto &p: prob) p *= anneal_rate;*/
+
     // Sample
     Softmax(prob.begin(), prob.end());
     int node_number = DiscreteSample(prob.begin(), prob.end(), generator);
@@ -359,5 +390,32 @@ void CollapsedSampling::UpdateDocCount(Document &doc, int delta) {
         TWord v = doc.w[n];
         count(k, v) += delta;
         ck[k] += delta;
+    }
+}
+
+void CollapsedSampling::RemovePath() {
+    // Randomly delete 3 paths
+    auto nodes = tree.GetAllNodes();
+    vector<bool> selected(nodes.size(), false);
+
+    for (int i = 0; i < 2; i++) {
+        // Select a path to remove
+        int index;
+        do {
+            index = generator() % (int) nodes.size();
+        } while (selected[index] || nodes[index]->depth + 1 != L);
+        selected[index] = true;
+
+        auto *node = nodes[index];
+
+        // Reset corresponding documents
+        for (auto &doc: docs) {
+            if (doc.c.back()->id == node->id) {
+                doc.initialized = false;
+                UpdateDocCount(doc, -1);
+                tree.UpdateNumDocs(doc.c.back(), -1);
+                for (auto &l: doc.z) l = generator() % L;
+            }
+        }
     }
 }

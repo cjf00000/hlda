@@ -12,8 +12,8 @@ using namespace std;
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, vector<TProb> alpha, vector<TProb> beta,
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples,
-                                                       size_t minibatch_size) :
-        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples),
+                                                       size_t minibatch_size, int anneal_iters) :
+        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, anneal_iters),
         minibatch_size(minibatch_size) {
     current_it = -1;
 }
@@ -141,6 +141,11 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
         ++count(ids[l], v);
         ++ck[ids[l]];
     }
+    double sum = 0;
+    for (TLen l = 0; l < L; l++)
+        sum += (doc.theta[l] = cdl[l] + alpha[l]);
+    for (TLen l = 0; l < L; l++)
+        doc.theta[l] /= sum;
 }
 
 TProb PartiallyCollapsedSampling::WordScore(Document &doc,

@@ -23,6 +23,9 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
     for (auto &doc: docs) {
         doc.z.resize(doc.w.size());
         doc.c.resize((size_t) L);
+        doc.theta.resize((size_t) L);
+        fill(doc.theta.begin(), doc.theta.end(), 1. / L);
+        doc.initialized = true;
     }
     alpha_bar = accumulate(alpha.begin(), alpha.end(), 0.0);
 }
