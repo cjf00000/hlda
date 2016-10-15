@@ -235,39 +235,39 @@ double CollapsedSampling::Perplexity() {
         double new_doc_avg_likelihood = (log_likelihood - old_log_likelihood) / doc.z.size();
         new_dal.push_back(new_doc_avg_likelihood);
     }
-    // Compare new_dal with doc_avg_likelihood
-    std::vector<pair<double, size_t>> amt_increase;
-    for (size_t d = 0; d < docs.size(); d++)
-        amt_increase.push_back(make_pair(new_dal[d] - doc_avg_likelihood[d], d));
+    /*
+   // Compare new_dal with doc_avg_likelihood
+   std::vector<pair<double, size_t>> amt_increase;
+   for (size_t d = 0; d < docs.size(); d++)
+       amt_increase.push_back(make_pair(new_dal[d] - doc_avg_likelihood[d], d));
 
-    // TODO why the perplexity increase?
-    sort(amt_increase.begin(), amt_increase.end());
-    amt_increase.resize(10);
-    if (current_it > 0) {
-        ofstream fout(("log_" + to_string(current_it)).c_str());
-        for (int i = 0; i < 100; i++) {
-            auto d = amt_increase[i].second;
-            fout << d << ' ' << doc_avg_likelihood[d] << " -> " << new_dal[d]
-                 << " Old path: ";
-            for (int l = 0; l < L; l++)
-                fout << old_doc_ids[d][l] << ':' << old_doc_sizes[d][l] << ' ';
+   sort(amt_increase.begin(), amt_increase.end());
+   amt_increase.resize(10);
+   if (current_it > 0) {
+       ofstream fout(("log_" + to_string(current_it)).c_str());
+       for (int i = 0; i < 100; i++) {
+           auto d = amt_increase[i].second;
+           fout << d << ' ' << doc_avg_likelihood[d] << " -> " << new_dal[d]
+                << " Old path: ";
+           for (int l = 0; l < L; l++)
+               fout << old_doc_ids[d][l] << ':' << old_doc_sizes[d][l] << ' ';
 
-            fout << " New path: ";
-            for (int l = 0; l < L; l++)
-                fout << docs[d].c[l]->id << ':' << docs[d].c[l]->num_docs << ' ';
-            fout << endl;
-        }
-    }
+           fout << " New path: ";
+           for (int l = 0; l < L; l++)
+               fout << docs[d].c[l]->id << ':' << docs[d].c[l]->num_docs << ' ';
+           fout << endl;
+       }
+   }
 
-    doc_avg_likelihood = new_dal;
-    old_doc_ids.resize(docs.size());
-    old_doc_sizes.resize(docs.size());
-    for (size_t d = 0; d < docs.size(); d++) {
-        old_doc_ids[d] = docs[d].GetIDs();
-        old_doc_sizes[d].resize((size_t) L);
-        for (int l = 0; l < L; l++)
-            old_doc_sizes[d][l] = docs[d].c[l]->num_docs;
-    }
+   doc_avg_likelihood = new_dal;
+   old_doc_ids.resize(docs.size());
+   old_doc_sizes.resize(docs.size());
+   for (size_t d = 0; d < docs.size(); d++) {
+       old_doc_ids[d] = docs[d].GetIDs();
+       old_doc_sizes[d].resize((size_t) L);
+       for (int l = 0; l < L; l++)
+           old_doc_sizes[d][l] = docs[d].c[l]->num_docs;
+   }*/
 
     return exp(-log_likelihood / T);
 }
@@ -290,12 +290,19 @@ void CollapsedSampling::DFSSample(Document &doc) {
 
     // Warning: this is not thread safe
 
-    // TODO implement correct dirichlet-multinomial sampling
-    for (int s = 0; s < mc_samples; s++) {
+    //std::vector<TProb> myalpha{100, 100, 100, 100};
+    dirichlet_distribution<TProb> dir(alpha);
+    for (int s = 0; s < max(mc_samples, 1); s++) {
         // Resample Z
-        //for (auto &l: doc.z) l = mult(generator);
+        // Random Dirichlet
+
+        auto theta = dir(generator);
+        //discrete_distribution<int> mult(theta.begin(), theta.end());
+        discrete_distribution<int> mult(alpha.begin(), alpha.end());
+
+        // Random multinomial
         if (mc_samples != -1) {
-            for (auto &l: doc.z) l = generator() % L;
+            for (auto &l: doc.z) l = mult(generator);
         }
         doc.PartitionWByZ(L);
 
