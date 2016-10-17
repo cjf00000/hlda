@@ -6,4 +6,4 @@
 #    dot -Tpng -o${filename}.png ${filename}.dot
 #done
 
-ls tree*.dot -w1 | xargs -P4 -n1 ./conv 
+ls *.dot -w1 | xargs -P4 -n1 ./conv 
