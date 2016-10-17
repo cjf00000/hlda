@@ -11,10 +11,11 @@ using namespace std;
 
 PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, vector<TProb> alpha, vector<TProb> beta,
                                                        vector<TProb> gamma,
-                                                       int num_iters, int mc_samples,
+                                                       int num_iters, int mc_samples, int mc_iters,
                                                        size_t minibatch_size,
                                                        int remove_iters, int remove_paths) :
-        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, remove_iters, remove_paths),
+        CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters,
+                          remove_iters, remove_paths),
         minibatch_size(minibatch_size) {
     current_it = -1;
 }
@@ -60,9 +61,7 @@ void PartiallyCollapsedSampling::Estimate() {
             for (auto &doc: docs)
                 ResetZ(doc);
         }*/
-        if (current_it <= remove_iters)
-            RemovePath();
-        if (current_it >= 20)
+        if (current_it >= mc_iters)
             mc_samples = -1;
 
         SamplePhi();

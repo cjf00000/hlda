@@ -33,10 +33,11 @@ int main() {
     std::vector<double> gamma{1e-20, 1e-20, 1e-20};
     int branching_factor = 0;
 
-    int num_iters = 30;
+    int num_iters = 100;
     int mc_samples = 5;
-    int remove_iters = -1;
-    int remove_paths = 1;
+    int mc_iters = -1;
+    int remove_iters = 80;
+    int remove_paths = -1;
     size_t minibatch_size = 200;
 
     // Problem 1: there are too much topics during initialization
@@ -44,14 +45,14 @@ int main() {
 
     // FSD
     //auto *model1 = new FiniteSymmetricDirichlet(corpus, L, alpha, beta, gamma, branching_factor, num_iters, mc_samples);
-    //auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, anneal_iters);
-    auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, minibatch_size,
-                                                  remove_iters, remove_paths);
+    auto *model1 = new CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters, remove_iters,
+                                         remove_paths);
+    //auto *model1 = new PartiallyCollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters, minibatch_size, remove_iters, remove_paths);
     //auto *model1 = new ExternalHLDA(corpus, L, alpha, beta, gamma, "/home/jianfei/Projects/hlda-c/out/run014");
     model1->Initialize();
     model1->Estimate();
 
-    model1->Visualize("tree1", 10);
+    model1->Visualize("vis_result/tree", 10);
 
     return 0;
 }

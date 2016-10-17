@@ -12,8 +12,9 @@ using namespace std;
 
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
-                                     int num_iters, int mc_samples, int remove_iters, int remove_paths) :
-        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples),
+                                     int num_iters, int mc_samples, int mc_iters,
+                                     int remove_iters, int remove_paths) :
+        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), mc_iters(mc_iters),
         remove_iters(remove_iters), remove_paths(remove_paths) {}
 
 void CollapsedSampling::Initialize() {
@@ -56,7 +57,7 @@ void CollapsedSampling::Estimate() {
         current_it = it;
         Clock clk;
         Check();
-        if (current_it >= 20)
+        if (current_it >= mc_iters)
             mc_samples = -1;
 
         /*if (it % 5 == 4 && it <= 20) {
