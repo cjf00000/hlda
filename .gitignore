@@ -6,3 +6,4 @@ gflags
 *.txt
 log_*
 *.swo
+release

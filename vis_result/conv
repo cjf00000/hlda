@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+echo $1
+f=${1%.*}
+dot -Tpng -o${f}.png ${f}.dot
