@@ -95,6 +95,13 @@ void PartiallyCollapsedSampling::Estimate() {
                     num_docs_big += node->num_docs;
             }
 
+        std::vector<int> cl(L);
+        for (auto *node: nodes)
+            cl[node->depth]++;
+        for (int l=0; l<L; l++)
+            printf("%d ", cl[l]);
+        printf("\n");
+
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
