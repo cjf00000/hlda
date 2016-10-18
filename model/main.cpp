@@ -9,15 +9,15 @@
 
 using namespace std;
 
-DEFINE_string(prefix, "data/nysmall", "prefix of the corpus");
+DEFINE_string(prefix, "data/nysmaller", "prefix of the corpus");
 DEFINE_string(algo, "pcs", "Algorithm, cs, pcs, or es");
 DEFINE_int32(L, 4, "number of levels");
 DEFINE_string(alpha, "0.5,0.5,0.5,0.5", "Prior on level assignment, delimited by comma");
-DEFINE_string(beta, "1,0.4,0.3,0.25", "Prior on topics, delimited by comma");
-DEFINE_string(gamma, "1e-45,1e-37,1e-23", "Parameter of nCRP, delimited by comma");
-DEFINE_int32(n_iters, 30, "Number of iterations");
+DEFINE_string(beta, "1,0.4,0.3,0.2", "Prior on topics, delimited by comma");
+DEFINE_string(gamma, "1e-40,1e-30,1e-20", "Parameter of nCRP, delimited by comma");
+DEFINE_int32(n_iters, 70, "Number of iterations");
 DEFINE_int32(n_mc_samples, 5, "Number of Monte-Carlo samples, -1 for none.");
-DEFINE_int32(n_mc_iters, 20, "Number of Monte-Carl iterations, -1 for none.");
+DEFINE_int32(n_mc_iters, 30, "Number of Monte-Carl iterations, -1 for none.");
 DEFINE_int32(n_remove_trees, -1, "Number of subtrees to remove for each iteration, -1 for none.");
 DEFINE_int32(n_remove_iters, -1, "Number of iterations to remove subtrees, -1 for none.");
 DEFINE_int32(minibatch_size, 1000, "Minibatch size for initialization (for pcs)");
