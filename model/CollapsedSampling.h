@@ -13,7 +13,7 @@ public:
                       std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
                       int num_iters,
                       int mc_samples, int mc_iters,
-                      int remove_iters, int remove_paths);
+                      int remove_iters, int remove_paths, int topic_limit);
 
     void Initialize() override;
 
@@ -44,7 +44,7 @@ protected:
 
     std::vector<TCount> ck;
 
-    int current_it, mc_iters, remove_iters, remove_paths;
+    int current_it, mc_iters, remove_iters, remove_paths, topic_limit;
 
     std::vector<double> doc_avg_likelihood;
     std::vector<std::vector<int>> old_doc_ids;

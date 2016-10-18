@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <exception>
 #include "CollapsedSampling.h"
 #include "Clock.h"
 #include "corpus.h"
@@ -13,9 +14,9 @@ using namespace std;
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
                                      int num_iters, int mc_samples, int mc_iters,
-                                     int remove_iters, int remove_paths) :
+                                     int remove_iters, int remove_paths, int topic_limit) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), mc_iters(mc_iters),
-        remove_iters(remove_iters), remove_paths(remove_paths) {}
+        remove_iters(remove_iters), remove_paths(remove_paths), topic_limit(topic_limit) {}
 
 void CollapsedSampling::Initialize() {
     ck.resize(1);
@@ -48,6 +49,9 @@ void CollapsedSampling::ProgressivelyOnlineInitialize() {
 
         SampleC(doc, false, true);
         SampleZ(doc, true, true);
+
+        if (tree.GetMaxID() > topic_limit) 
+            throw runtime_error("There are too many topics");
     }
     cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
 }

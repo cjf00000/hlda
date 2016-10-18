@@ -13,9 +13,9 @@ PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, ve
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples, int mc_iters,
                                                        size_t minibatch_size,
-                                                       int remove_iters, int remove_paths) :
+                                                       int remove_iters, int remove_paths, int topic_limit) :
         CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters,
-                          remove_iters, remove_paths),
+                          remove_iters, remove_paths, topic_limit),
         minibatch_size(minibatch_size) {
     current_it = -1;
 }
@@ -45,6 +45,8 @@ void PartiallyCollapsedSampling::Initialize() {
         SamplePhi();
 
         printf("Processed %lu documents\n", d_end);
+        if (tree.GetMaxID() > topic_limit) 
+            throw runtime_error("There are too many topics");
     }
     cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
 

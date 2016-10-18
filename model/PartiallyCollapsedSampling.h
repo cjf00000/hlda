@@ -12,7 +12,7 @@ public:
     PartiallyCollapsedSampling(Corpus &corpus, int L,
                                std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
                                int num_iters, int mc_samples, int mc_iters, size_t minibatch_size,
-                               int remove_iters, int remove_paths);
+                               int remove_iters, int remove_paths, int topic_limit);
 
     void Initialize() override;
 

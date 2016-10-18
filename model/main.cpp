@@ -21,6 +21,7 @@ DEFINE_int32(n_mc_iters, 20, "Number of Monte-Carl iterations, -1 for none.");
 DEFINE_int32(n_remove_trees, -1, "Number of subtrees to remove for each iteration, -1 for none.");
 DEFINE_int32(n_remove_iters, -1, "Number of iterations to remove subtrees, -1 for none.");
 DEFINE_int32(minibatch_size, 1000, "Minibatch size for initialization (for pcs)");
+DEFINE_int32(topic_limit, 100, "Upper bound of number of topics to terminate.");
 DEFINE_string(model_path, "out/run014", "Path of model for es");
 DEFINE_string(vis_prefix, "vis_result/tree", "Path of visualization");
 
@@ -81,14 +82,14 @@ int main(int argc, char **argv) {
         CollapsedSampling model(corpus, 
                 FLAGS_L, alpha, beta, gamma, 
                 FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters, 
-                FLAGS_n_remove_iters, FLAGS_n_remove_trees);
+                FLAGS_n_remove_iters, FLAGS_n_remove_trees, FLAGS_topic_limit);
         Run(model);
     }
     else if (FLAGS_algo == "pcs") {
         PartiallyCollapsedSampling model(corpus, 
                 FLAGS_L, alpha, beta, gamma, 
                 FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters, FLAGS_minibatch_size,
-                FLAGS_n_remove_iters, FLAGS_n_remove_trees);
+                FLAGS_n_remove_iters, FLAGS_n_remove_trees, FLAGS_topic_limit);
         Run(model);
     }
     else {
