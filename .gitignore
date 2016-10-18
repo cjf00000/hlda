@@ -7,3 +7,5 @@ gflags
 log_*
 *.swo
 release
+*.summary
+*.log
