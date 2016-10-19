@@ -1,9 +1,7 @@
 #include <iostream>
 #include <sstream>
-#include <exception>
 #include <gflags/gflags.h>
 #include "corpus.h"
-#include "FiniteSymmetricDirichlet.h"
 #include "PartiallyCollapsedSampling.h"
 #include "ExternalHLDA.h"
 
