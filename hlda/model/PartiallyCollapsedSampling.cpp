@@ -22,9 +22,8 @@ PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, ve
 
 void PartiallyCollapsedSampling::Initialize() {
     //CollapsedSampling::Initialize();
-    ck.resize(1);
-    count.SetR(1);
-    ck[0] = 0;
+    ck.resize((size_t) L);
+    ck[0].push_back(0);
     current_it = -1;
 
     cout << "Start initialize..." << endl;
@@ -45,10 +44,10 @@ void PartiallyCollapsedSampling::Initialize() {
         SamplePhi();
 
         printf("Processed %lu documents\n", d_end);
-        if (tree.GetMaxID() > topic_limit) 
+        if (tree.GetAllNodes().size() > (size_t) topic_limit)
             throw runtime_error("There are too many topics");
     }
-    cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
+    cout << "Initialized with " << tree.GetAllNodes().size() << " topics." << endl;
 
     SamplePhi();
 }
@@ -97,7 +96,7 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
     std::vector<TProb> prob((size_t) L);
     for (auto k: doc.z) cdl[k]++;
 
-    auto ids = doc.GetIDs();
+    auto pos = doc.GetPos();
     std::vector<bool> is_collapsed((size_t) L);
     for (int l = 0; l < L; l++) is_collapsed[l] = doc.c[l]->is_collapsed;
 
@@ -105,26 +104,27 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
         TWord v = doc.w[n];
         TTopic l = doc.z[n];
         if (decrease_count) {
+            --count[l](v, pos[l]);
+            --ck[l][pos[l]];
             --cdl[l];
-            --count(ids[l], v);
-            --ck[ids[l]];
         }
 
         for (TLen i = 0; i < L; i++)
             if (is_collapsed[i])
-                prob[i] = (alpha[i] + cdl[i]) *
-                          (beta[i] + count(ids[i], v)) / (beta[i] * corpus.V + ck[ids[i]]);
+                prob[i] = (cdl[i] + alpha[i]) *
+                          (count[i](v, pos[i]) + beta[i]) /
+                          (ck[i][pos[i]] + beta[i] * corpus.V);
             else {
-                prob[i] = (alpha[i] + cdl[i]) * phi(ids[i], v);
+                prob[i] = (alpha[i] + cdl[i]) * phi[i](v, pos[i]);
             }
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
         doc.z[n] = l;
 
         if (increase_count) {
+            ++count[l](v, pos[l]);
+            ++ck[l][pos[l]];
             ++cdl[l];
-            ++count(ids[l], v);
-            ++ck[ids[l]];
         }
     }
     /*double sum = 0;
@@ -134,49 +134,40 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
         doc.theta[l] /= sum;*/
 }
 
-TProb PartiallyCollapsedSampling::WordScore(Document &doc,
-                                            int l, int topic, Tree::Node *node) {
-    // Collapsed
-    if (topic == -1 || node->is_collapsed)
-        return CollapsedSampling::WordScore(doc, l, topic, node);
-
-    // Not collapsed
-    auto *b = doc.BeginLevel(l);
-    auto *e = doc.EndLevel(l);
-
-    double phi_score = 0;
-    for (auto *w = b; w != e; w++)
-        phi_score += log_phi(topic, *w);
-
-    return phi_score;
-}
-
-
 void PartiallyCollapsedSampling::SamplePhi() {
-    TTopic K = tree.GetMaxID();
     auto nodes = tree.GetAllNodes();
 
     // Set collapsed
     for (auto *node: nodes)
         node->is_collapsed = node->num_docs < threshold;
 
+    for (TLen l = 0; l < L; l++) {
+        auto perm = tree.Compress(l);
+
+        phi[l].SetC(tree.NumNodes(l));
+        log_phi[l].SetC(tree.NumNodes(l));
+
+        count[l].PermuteColumns(perm);
+        phi[l].PermuteColumns(perm);
+        log_phi[l].PermuteColumns(perm);
+
+        Permute(ck[l], perm);
+    }
+
     for (auto *node: nodes)
         cout << node->is_collapsed;
     cout << endl;
 
-    log_phi.SetR(K);
-    phi.SetR(K);
+    for (TLen l = 0; l < L; l++) {
+        TTopic K = tree.NumNodes(l);
 
-    for (auto *node: nodes) {
-        TTopic k = node->id;
-        TProb b = beta[node->depth];
-
-        double inv_sum = 1. / (b * corpus.V + ck[k]);
-
-        for (TWord v = 0; v < corpus.V; v++) {
-            double prob = (count(k, v) + b) * inv_sum;
-            phi(k, v) = prob;
-            log_phi(k, v) = log(prob);
+        for (TTopic k = 0; k < K; k++) {
+            TProb inv_sum = 1. / (beta[l] * corpus.V + ck[l][k]);
+            for (TWord v = 0; v < corpus.V; v++) {
+                TProb prob = (count[l](v, k) + beta[l]) * inv_sum;
+                phi[l](v, k) = prob;
+                log_phi[l](v, k) = logf(prob);
+            }
         }
     }
 }

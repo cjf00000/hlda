@@ -23,8 +23,6 @@ private:
 
     void SamplePhi();
 
-    TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) override;
-
     size_t minibatch_size;
     int threshold;
 };
