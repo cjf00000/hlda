@@ -214,7 +214,10 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
         for (TTopic k = 0; k < K; k++)
             result[k] += log_work[k];
 
-        result.back() += log((float) (c_offset + b));
+        if (c_offset < 1000)
+            result.back() += log_normalization(l, c_offset);
+        else
+            result.back() += log(c_offset + b);   
     }
 
     auto w_count = end - begin;

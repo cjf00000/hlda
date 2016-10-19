@@ -54,6 +54,8 @@ protected:
     std::vector<Matrix<TProb> > log_phi;
 
     std::vector<Matrix<TCount> > count;
+
+    Matrix<TProb> log_normalization;
 };
 
 

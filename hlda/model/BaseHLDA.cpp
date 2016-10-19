@@ -14,7 +14,7 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
                    int num_iters, int mc_samples) :
         tree(L, gamma.back()),
         corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
-        num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L), count((size_t) L) {
+        num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L), count((size_t) L), log_normalization(L, 1000) {
 
     TDoc D = corpus.D;
     docs.resize((size_t) D);
@@ -33,6 +33,10 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
     for (auto &m: phi) m.SetR(corpus.V);
     for (auto &m: log_phi) m.SetR(corpus.V);
     for (auto &m: count) m.SetR(corpus.V);
+
+    for (TLen l = 0; l < L; l++)
+        for (int i = 0; i < 1000; i++)
+            log_normalization(l, i) = log(beta[l] + i);
 }
 
 void BaseHLDA::Visualize(std::string fileName, int threshold) {
