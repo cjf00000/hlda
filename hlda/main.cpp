@@ -3,6 +3,7 @@
 #include <gflags/gflags.h>
 #include "corpus.h"
 #include "CollapsedSampling.h"
+#include "mkl_vml.h"
 //#include "PartiallyCollapsedSampling.h"
 //#include "ExternalHLDA.h"
 
@@ -41,6 +42,7 @@ vector<double> Parse(string src, int L, string name) {
 int main(int argc, char **argv) {
     gflags::SetUsageMessage("Usage : ./hlda [ flags... ]");
     gflags::ParseCommandLineFlags(&argc, &argv, true);
+    vmlSetMode(VML_EP); // VML_HA VML_LA
 
     // Parse alpha, beta and gamma
     auto alpha = Parse(FLAGS_alpha, FLAGS_L, "alpha");

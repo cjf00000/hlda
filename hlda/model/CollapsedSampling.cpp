@@ -7,6 +7,7 @@
 #include "CollapsedSampling.h"
 #include "Clock.h"
 #include "corpus.h"
+#include "mkl_vml.h"
 
 using namespace std;
 
@@ -193,6 +194,7 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
 
     auto K = num_instantiated + num_collapsed;
     std::vector<TProb> result((size_t) (K + 1));
+    std::vector<float> log_work((size_t) (K + 1));
 
     auto begin = doc.BeginLevel(l);
     auto end = doc.EndLevel(l);
@@ -204,9 +206,15 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
         auto v = doc.reordered_w[i];
 
         for (TTopic k = 0; k < K; k++)
-            result[k] += log(local_count(v, k) + c_offset + b);
+            log_work[k] = (float) (local_count(v, k) + c_offset + b);
 
-        result.back() += log(c_offset + b);
+        // VML ln
+        vsLn(K, log_work.data(), log_work.data());
+
+        for (TTopic k = 0; k < K; k++)
+            result[k] += log_work[k];
+
+        result.back() += log((float) (c_offset + b));
     }
 
     auto w_count = end - begin;

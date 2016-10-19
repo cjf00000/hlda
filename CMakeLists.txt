@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 2.8)
 project(hlda)
 
 add_subdirectory(gflags)
-set(CMAKE_CXX_FLAGS "-march=native -g -Wall -std=c++11")
+set(CMAKE_CXX_FLAGS "-m64 -Wl,--no-as-needed -march=native -g -Wall -std=c++11")
+
+link_directories(/opt/intel/mkl/lib/intel64)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)
@@ -11,6 +13,7 @@ if (OPENMP_FOUND)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif ()
 
+include_directories(/opt/intel/mkl/include)
 include_directories(hlda/common)
 include_directories(hlda/model)
 #include_directories(hlda)
