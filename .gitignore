@@ -9,3 +9,4 @@ log_*
 release
 *.summary
 *.log
+hlda_test/lib
