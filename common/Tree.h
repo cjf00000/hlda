@@ -25,8 +25,6 @@ public:
         bool is_collapsed;
     };
 
-    void Copy(const Tree &from);
-
     Tree(int L, double gamma);
 
     ~Tree();
@@ -36,32 +34,6 @@ public:
     void Remove(Node *node);
 
     void UpdateNumDocs(Node *leaf, int delta);
-
-    template<class TGenerator>
-    void Sample(Path &path, TGenerator &generator) {
-        auto *current = root;
-        path.resize(L);
-        path[0] = current;
-        for (int l = 1; l < L; l++) {
-            int N = (int) current->children.size();
-            std::vector<double> prob((size_t) N + 1);
-            for (int n = 0; n < N; n++)
-                prob[n] = current->children[n]->num_docs;
-            prob[N] = gamma;
-
-            int nch = DiscreteSample(prob.begin(), prob.end(), generator);
-            Node *next = nullptr;
-            if (nch == N)
-                next = AddChildren(current);
-            else
-                next = current->children[nch];
-
-            path[l] = next;
-            current = next;
-        }
-    }
-
-    void SetL(int L) { this->L = L; }
 
     int GetMaxID() { return max_id; }
 
