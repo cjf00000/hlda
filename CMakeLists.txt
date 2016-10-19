@@ -11,8 +11,7 @@ if (OPENMP_FOUND)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif ()
 
-include_directories(common)
-include_directories(model)
+include_directories(hlda/common)
+include_directories(hlda)
 
-add_subdirectory(common)
-add_subdirectory(model)
+add_subdirectory(hlda)
