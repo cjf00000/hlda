@@ -12,6 +12,8 @@ if (OPENMP_FOUND)
 endif ()
 
 include_directories(hlda/common)
-include_directories(hlda)
+include_directories(hlda/model)
+#include_directories(hlda)
 
 add_subdirectory(hlda)
+add_subdirectory(hlda_test)
