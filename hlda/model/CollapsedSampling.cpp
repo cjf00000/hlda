@@ -148,9 +148,24 @@ void CollapsedSampling::DFSSample(Document &doc) {
         doc.PartitionWByZ(L);
 
         // Compute the score for each layer
-        vector<vector<TProb> > scores((size_t) L);
+       /* vector<vector<TProb> > scores((size_t) L);
         for (TLen l = 0; l < L; l++)
-            scores[l] = WordScore(doc, l, 0, tree.NumNodes(l));
+            scores[l] = WordScore(doc, l, 0, tree.NumNodes(l));*/
+
+        vector<vector<double> > scores((size_t) L);
+        for (TLen l = 0; l < L; l++) {
+            // Figure out how many collapsed and how many instantiated
+            TTopic K = tree.NumNodes(l);
+            int last_is_instantiated = -1;
+            for (auto *node: nodes)
+                if (node->depth == l && !node->is_collapsed)
+                    last_is_instantiated = max(last_is_instantiated, node->pos);
+
+            int num_instantiated = last_is_instantiated + 1;
+            int num_collapsed = K - num_instantiated;
+
+            scores[l] = WordScore(doc, l, num_instantiated, num_collapsed);
+        }
 
         vector<TProb> emptyProbability((size_t) L, 0);
         for (TLen l = L - 2; l >= 0; l--)
@@ -200,18 +215,22 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
     auto end = doc.EndLevel(l);
 
     auto &local_count = count[l];
+    auto &local_log_phi = log_phi[l];
 
     for (auto i = begin; i < end; i++) {
         auto c_offset = doc.c_offsets[i];
         auto v = doc.reordered_w[i];
 
-        for (TTopic k = 0; k < K; k++)
+        for (TTopic k = num_instantiated; k < K; k++)
             log_work[k] = (float) (local_count(v, k) + c_offset + b);
 
         // VML ln
-        vsLn(K, log_work.data(), log_work.data());
+        vsLn(num_collapsed, log_work.data() + num_instantiated,
+             log_work.data() + num_instantiated);
 
-        for (TTopic k = 0; k < K; k++)
+        for (TTopic k = 0; k < num_instantiated; k++)
+            result[k] += local_log_phi(v, k);
+        for (TTopic k = num_instantiated; k < K; k++)
             result[k] += log_work[k];
 
         if (c_offset < 1000)
@@ -221,7 +240,7 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
     }
 
     auto w_count = end - begin;
-    for (TTopic k = 0; k < K; k++)
+    for (TTopic k = num_instantiated; k < K; k++)
         result[k] -= lgamma(ck[l][k] + b_bar + w_count) - lgamma(ck[l][k] + b_bar);
 
     result.back() -= lgamma(b_bar + w_count) - lgamma(b_bar);
