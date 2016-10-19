@@ -14,19 +14,25 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
                    int num_iters, int mc_samples) :
         tree(L, gamma.back()),
         corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
-        num_iters(num_iters), mc_samples(mc_samples),
-        phi(0, corpus.V), log_phi(0, corpus.V), count(0, corpus.V) {
+        num_iters(num_iters), mc_samples(mc_samples) {
+
     TDoc D = corpus.D;
     docs.resize((size_t) D);
     for (int d = 0; d < D; d++)
         docs[d].w = corpus.w[d];
+
     for (auto &doc: docs) {
         doc.z.resize(doc.w.size());
         doc.c.resize((size_t) L);
         doc.theta.resize((size_t) L);
         fill(doc.theta.begin(), doc.theta.end(), 1. / L);
     }
+
     alpha_bar = accumulate(alpha.begin(), alpha.end(), 0.0);
+
+    for (auto &m: phi) m.SetR(corpus.V);
+    for (auto &m: log_phi) m.SetR(corpus.V);
+    for (auto &m: count) m.SetR(corpus.V);
 }
 
 void BaseHLDA::Visualize(std::string fileName, int threshold) {
@@ -41,7 +47,7 @@ void BaseHLDA::Visualize(std::string fileName, int threshold) {
             fout << "Node" << node->id << " [label=\"" << node->id << '\n'
                  << node->num_docs << "\n"
                  << node->weight << "\n"
-                 << TopWords(node->id) << "\"]\n";
+                 << TopWords(node->depth, node->pos) << "\"]\n";
 
     // Output edges
     for (auto *node: nodes)
@@ -52,12 +58,12 @@ void BaseHLDA::Visualize(std::string fileName, int threshold) {
     fout << "}";
 }
 
-std::string BaseHLDA::TopWords(int id) {
+std::string BaseHLDA::TopWords(int l, int id) {
     TWord V = corpus.V;
     vector<pair<int, int>> rank((size_t) V);
     long long sum = 0;
     for (int v = 0; v < V; v++) {
-        int c = count(id, v);
+        int c = count[l](v, id);
         rank[v] = make_pair(-c, v);
         sum += c;
     }

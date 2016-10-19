@@ -10,36 +10,29 @@
 
 class IDPool {
 public:
-    IDPool() { num_ids = 0; }
+    IDPool() { Clear(); }
+
+    void Clear() {
+        allocated.size();
+    }
 
     int Allocate() {
-        int id;
-        if (!free_ids.empty()) {
-            id = free_ids.back();
-            free_ids.pop_back();
-
-        } else {
-            id = num_ids++;
+        auto it = std::find(allocated.begin(), allocated.end(), false);
+        if (it == allocated.end()) {
+            allocated.push_back(true);
+            return (int) allocated.size() - 1;
         }
-        allocated_ids.insert(id);
-        return id;
+        return (int) (it - allocated.begin());
     }
 
     void Free(int id) {
-        allocated_ids.erase(id);
-        free_ids.push_back(id);
+        allocated[id] = false;
     }
 
-    int Size() { return num_ids; }
-
-    bool Has(int id) {
-        return allocated_ids.find(id) != allocated_ids.end();
-    }
+    int Size() { return (int) allocated.size(); }
 
 private:
-    std::vector<int> free_ids;
-    std::set<int> allocated_ids;
-    int num_ids;
+    std::vector<bool> allocated;
 };
 
 

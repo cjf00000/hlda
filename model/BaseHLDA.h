@@ -30,11 +30,12 @@ public:
     void Visualize(std::string fileName, int threshold = -1);
 
 protected:
-    virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) = 0;
+    virtual std::vector<TProb>
+    WordScore(Document &doc, int l, int num_instantiated, int num_collapsed) = 0;
 
     virtual void InitializeTreeWeight();
 
-    std::string TopWords(int id);
+    std::string TopWords(int l, int id);
 
     Tree tree;
     Corpus &corpus;
@@ -47,9 +48,12 @@ protected:
     xorshift generator;
 
     std::vector<Document> docs;
-    Matrix<TProb> phi;
-    Matrix<TProb> log_phi;
-    Matrix<TCount> count;
+
+    // For pcs and is
+    std::vector<Matrix<TProb> > phi;        // Depth * V * K
+    std::vector<Matrix<TProb> > log_phi;
+
+    std::vector<Matrix<TCount> > count;
 };
 
 

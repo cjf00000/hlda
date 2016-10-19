@@ -6,10 +6,10 @@
 
 using namespace std;
 
-std::vector<TTopic> Document::GetIDs() {
+std::vector<TTopic> Document::GetPos() {
     std::vector<TTopic> result(c.size());
     for (std::size_t l = 0; l < c.size(); l++)
-        result[l] = c[l]->id;
+        result[l] = c[l]->pos;
     return move(result);
 }
 
@@ -33,6 +33,20 @@ void Document::PartitionWByZ(int L) {
     // Correct offset
     for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
     offsets[0] = 0;
+
+    // Compute c_offsets
+    c_offsets.resize(w.size());
+    for (int l = 0; l < L; l++) {
+        TLen begin = offsets[l];
+        TLen end = offsets[l + 1];
+
+        TLen j;
+        for (TLen i = begin; i != end; i = j) {
+            for (j = i; j != end && reordered_w[i] == reordered_w[j]; j++);
+            for (TLen k = i; k < j; k++)
+                c_offsets[k] = k - i;
+        }
+    }
 }
 
 void Document::Check() {

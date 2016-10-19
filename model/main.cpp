@@ -2,8 +2,9 @@
 #include <sstream>
 #include <gflags/gflags.h>
 #include "corpus.h"
-#include "PartiallyCollapsedSampling.h"
-#include "ExternalHLDA.h"
+#include "CollapsedSampling.h"
+//#include "PartiallyCollapsedSampling.h"
+//#include "ExternalHLDA.h"
 
 using namespace std;
 
@@ -71,15 +72,15 @@ int main(int argc, char **argv) {
                                       FLAGS_topic_limit);
     }
     else if (FLAGS_algo == "pcs") {
-        model = new PartiallyCollapsedSampling(corpus,
+        /*model = new PartiallyCollapsedSampling(corpus,
                                                FLAGS_L, alpha, beta, gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
-                                               FLAGS_topic_limit, FLAGS_threshold);
+                                               FLAGS_topic_limit, FLAGS_threshold);*/
     }
     else {
-        model = new ExternalHLDA(corpus,
-                                 FLAGS_L, alpha, beta, gamma, FLAGS_model_path);
+        /*model = new ExternalHLDA(corpus,
+                                 FLAGS_L, alpha, beta, gamma, FLAGS_model_path);*/
     }
 
     model->Initialize();

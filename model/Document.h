@@ -17,17 +17,18 @@ struct Document {
     std::vector<TProb> theta;
 
     std::vector<TWord> reordered_w;
+    std::vector<TProb> c_offsets;    // offset for log gamma
     std::vector<TLen> offsets;
 
-    std::vector<TTopic> GetIDs();
+    std::vector<TTopic> GetPos();
 
     void PartitionWByZ(int L);
 
     void Check();
 
-    TWord *BeginLevel(int l) { return reordered_w.data() + offsets[l]; }
+    TLen BeginLevel(int l) { return offsets[l]; }
 
-    TWord *EndLevel(int l) { return reordered_w.data() + offsets[l + 1]; }
+    TLen EndLevel(int l) { return offsets[l + 1]; }
 };
 
 #endif //HLDA_DOCUMENT_H

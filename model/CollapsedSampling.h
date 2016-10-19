@@ -26,15 +26,16 @@ protected:
 
     void DFSSample(Document &doc);
 
+    virtual std::vector<TProb>
+    WordScore(Document &doc, int l, int num_instantiated, int num_collapsed) override;
+
     double Perplexity();
 
     void Check();
 
     void UpdateDocCount(Document &doc, int delta);
 
-    virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node);
-
-    std::vector<TCount> ck;
+    std::vector<std::vector<TCount>> ck;
 
     int current_it, mc_iters, topic_limit;
 

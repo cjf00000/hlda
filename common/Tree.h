@@ -7,6 +7,7 @@
 
 #include <vector>
 #include "utils.h"
+#include "IDPool.h"
 
 #define Path std::vector<Tree::Node*>
 
@@ -15,7 +16,7 @@ public:
     struct Node {
         Node *parent;
         std::vector<Node *> children;
-        int id, depth;
+        int id, pos, depth;
 
         int num_docs;
         double weight;
@@ -35,26 +36,27 @@ public:
 
     void UpdateNumDocs(Node *leaf, int delta);
 
-    int GetMaxID() { return max_id; }
-
     std::vector<Node *> GetAllNodes() const;
 
     void GetPath(Node *leaf, Path &path);
 
     Node *GetRoot() { return root; }
 
+    int NumNodes(int l) { return idpool[l].Size(); }
+
+    // Compress the pos, and return a map from old pos to new pos
+    std::vector<int> Compress(int l);
+
     int L;
     double gamma;
 
 private:
-    int GetFreeID();
-
-    void AddFreeID(int id);
-
     void getAllNodes(Node *root, std::vector<Node *> &result) const;
 
     Node *root;
-    std::vector<int> unallocated_ids;
+
+    std::vector<IDPool> idpool;
+
     int max_id;
 };
 
