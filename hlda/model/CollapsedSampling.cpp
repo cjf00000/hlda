@@ -49,6 +49,12 @@ void CollapsedSampling::Estimate() {
             SampleZ(doc, true, true);
         }
 
+        for (TLen l = 0; l < L; l++) {
+            auto perm = tree.Compress(l);
+            count[l].PermuteColumns(perm);
+            Permute(ck[l], perm);
+        }
+
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
@@ -252,15 +258,17 @@ double CollapsedSampling::Perplexity() {
 
 void CollapsedSampling::Check() {
     int sum = 0;
-    for (TLen l = 0; l < L; l++)
+    for (TLen l = 0; l < L; l++) {
         for (TTopic k = 0; k < tree.NumNodes(l); k++)
             for (TWord v = 0; v < corpus.V; v++) {
                 if (count[l](v, k) < 0)
                     throw runtime_error("Error!");
                 sum += count[l](v, k);
             }
+    }
     if (sum != corpus.T)
-        throw runtime_error("Total token error!");
+        throw runtime_error("Total token error! expected " +
+                            to_string(corpus.T) + ", got " + to_string(sum));
 }
 
 void CollapsedSampling::UpdateDocCount(Document &doc, int delta) {

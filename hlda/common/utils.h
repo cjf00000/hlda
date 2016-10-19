@@ -90,4 +90,13 @@ private:
 
 #define UNUSED(x) (void)(x)
 
+template<class T>
+void Permute(std::vector<T> &a, std::vector<int> perm) {
+    std::vector<T> original = a;
+    std::fill(a.begin(), a.end(), 0);
+    for (size_t i = 0; i < perm.size(); i++)
+        if (perm[i] != -1)
+            a[perm[i]] = original[i];
+}
+
 #endif //FAST_HLDA2_UTILS_H

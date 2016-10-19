@@ -46,6 +46,27 @@ public:
         }
     }
 
+    void PermuteColumns(std::vector<int> permutation) {
+        /*size_t old_sum = 0;
+        for (auto k: data)
+            old_sum += k;*/
+
+        Matrix original = *this;
+
+        fill(data.begin(), data.end(), 0);
+        for (int c = 0; c < (size_t) permutation.size(); c++)
+            if (permutation[c] != -1) {
+                int dest = permutation[c];
+                for (int r = 0; r < R; r++)
+                    (*this)(r, dest) = original(r, c);
+            }
+
+        /*size_t new_sum = 0;
+        for (auto k: data)
+            new_sum += k;
+        printf("%lu %lu\n", old_sum, new_sum);*/
+    }
+
     T &operator()(int r, int c) {
         return data[r * C + c];
     }

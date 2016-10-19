@@ -10,7 +10,7 @@ using namespace std;
 
 using Node = Tree::Node;
 
-Tree::Tree(int L, double gamma) : L(L), gamma(gamma), idpool(L), max_id(1) {
+Tree::Tree(int L, double gamma) : L(L), gamma(gamma), idpool((size_t) L), max_id(1) {
     root = new Node();
     root->id = 0;
     root->pos = idpool[0].Allocate();
@@ -81,7 +81,7 @@ std::vector<int> Tree::Compress(int l) {
     vector<pair<size_t, int>> rank;
     for (auto *node: nodes)
         if (node->depth == l)
-            rank.push_back(make_pair(node->is_collapsed ? 0 : 1e9 + node->num_docs,
+            rank.push_back(make_pair((node->is_collapsed ? 0 : 1e9) + node->num_docs,
                                      node->pos));
 
     sort(rank.begin(), rank.end());

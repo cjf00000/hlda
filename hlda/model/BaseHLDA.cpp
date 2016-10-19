@@ -14,7 +14,7 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
                    int num_iters, int mc_samples) :
         tree(L, gamma.back()),
         corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
-        num_iters(num_iters), mc_samples(mc_samples) {
+        num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L), count((size_t) L) {
 
     TDoc D = corpus.D;
     docs.resize((size_t) D);

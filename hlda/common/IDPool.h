@@ -13,7 +13,7 @@ public:
     IDPool() { Clear(); }
 
     void Clear() {
-        allocated.size();
+        allocated.clear();
     }
 
     int Allocate() {
