@@ -13,26 +13,18 @@ public:
                       std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
                       int num_iters,
                       int mc_samples, int mc_iters,
-                      int remove_iters, int remove_paths, int topic_limit);
+                      int topic_limit);
 
-    void Initialize() override;
+    virtual void Initialize();
 
-    void ProgressivelyOnlineInitialize();
-
-    virtual void Estimate();
+    virtual void Estimate() override;
 
 protected:
     virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count);
 
     virtual void SampleC(Document &doc, bool decrease_count, bool increase_count);
 
-    virtual void ResetZ(Document &doc);
-
-    virtual void Recount();
-
-    void DFSSample(Document &doc) override;
-
-    void RemovePath();
+    void DFSSample(Document &doc);
 
     double Perplexity();
 
@@ -44,11 +36,9 @@ protected:
 
     std::vector<TCount> ck;
 
-    int current_it, mc_iters, remove_iters, remove_paths, topic_limit;
+    int current_it, mc_iters, topic_limit;
 
     std::vector<double> doc_avg_likelihood;
-    std::vector<std::vector<int>> old_doc_ids;
-    std::vector<std::vector<int>> old_doc_sizes;
 };
 
 

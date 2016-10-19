@@ -25,36 +25,8 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
         doc.c.resize((size_t) L);
         doc.theta.resize((size_t) L);
         fill(doc.theta.begin(), doc.theta.end(), 1. / L);
-        doc.initialized = true;
     }
     alpha_bar = accumulate(alpha.begin(), alpha.end(), 0.0);
-}
-
-void BaseHLDA::Initialize() {
-    for (auto &doc: docs) {
-        // Sample c
-        tree.Sample(doc.c, generator);
-        tree.UpdateNumDocs(doc.c.back(), 1);
-
-        // Sample z
-        for (auto &k: doc.z)
-            k = generator() % L;
-    }
-    UpdateCount();
-    printf("Initialized with %d topics.\n", tree.GetMaxID());
-}
-
-void BaseHLDA::UpdateCount(size_t end) {
-    count.SetR(tree.GetMaxID());
-    count.Clear();
-    size_t e = end == (size_t) -1 ? docs.size() : end;
-    for (size_t d = 0; d < e; d++) {
-        auto &doc = docs[d];
-        TLen N = (TLen) doc.w.size();
-
-        for (TLen n = 0; n < N; n++)
-            count(doc.c[doc.z[n]]->id, doc.w[n])++;
-    }
 }
 
 void BaseHLDA::Visualize(std::string fileName, int threshold) {
@@ -98,37 +70,6 @@ std::string BaseHLDA::TopWords(int id) {
 
     return out.str();
 }
-
-void BaseHLDA::DFSSample(Document &doc) {
-    auto nodes = tree.GetAllNodes();
-    decltype(nodes) leaves;
-    leaves.reserve(nodes.size());
-    vector<TProb> prob;
-    prob.reserve(nodes.size());
-
-    doc.PartitionWByZ(L);
-
-    // Warning: this is not thread safe
-    for (auto *node: nodes) {
-        if (node->depth == 0)
-            node->sum_log_prob = WordScore(doc, node->depth, node->id, node);
-        else
-            node->sum_log_prob = node->parent->sum_log_prob +
-                                 WordScore(doc, node->depth, node->id, node);
-
-        if (node->depth + 1 == L) {
-            leaves.push_back(node);
-            prob.push_back(node->sum_log_prob + node->sum_log_weight);
-        }
-    }
-
-    // Sample
-    Softmax(prob.begin(), prob.end());
-    int leaf_index = DiscreteSample(prob.begin(), prob.end(), generator);
-
-    tree.GetPath(leaves[leaf_index], doc.c);
-}
-
 
 void BaseHLDA::InitializeTreeWeight() {
     auto nodes = tree.GetAllNodes();

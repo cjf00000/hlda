@@ -88,4 +88,6 @@ private:
     std::vector<std::gamma_distribution<T>> gammas;
 };
 
+#define UNUSED(x) (void)(x)
+
 #endif //FAST_HLDA2_UTILS_H

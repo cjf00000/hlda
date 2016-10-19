@@ -13,7 +13,7 @@
 template<class T>
 class Matrix {
 public:
-    Matrix(int R, int C) : R(R), C(C) {}
+    Matrix(int R = 1, int C = 1) : R(R), C(C), data(R * C) {}
 
     void SetR(int new_R) {
         Resize(new_R, C);

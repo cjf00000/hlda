@@ -23,21 +23,18 @@ public:
              std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<TProb> gamma,
              int num_iters, int mc_samples);
 
-    virtual void Initialize();
+    virtual void Initialize() = 0;
+
+    virtual void Estimate() = 0;
 
     void Visualize(std::string fileName, int threshold = -1);
 
-    std::string TopWords(int id);
-
 protected:
-    void UpdateCount(size_t end = (size_t) -1);
-
-    // Required by SampleC
-    virtual void DFSSample(Document &doc);
-
     virtual TProb WordScore(Document &doc, int l, int topic, Tree::Node *node) = 0;
 
     virtual void InitializeTreeWeight();
+
+    std::string TopWords(int id);
 
     Tree tree;
     Corpus &corpus;

@@ -4,7 +4,6 @@
 
 #include <iostream>
 #include <cmath>
-#include <exception>
 #include "CollapsedSampling.h"
 #include "Clock.h"
 #include "corpus.h"
@@ -14,9 +13,9 @@ using namespace std;
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
                                      int num_iters, int mc_samples, int mc_iters,
-                                     int remove_iters, int remove_paths, int topic_limit) :
+                                     int topic_limit) :
         BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples), mc_iters(mc_iters),
-        remove_iters(remove_iters), remove_paths(remove_paths), topic_limit(topic_limit) {}
+        topic_limit(topic_limit) {}
 
 void CollapsedSampling::Initialize() {
     ck.resize(1);
@@ -24,24 +23,6 @@ void CollapsedSampling::Initialize() {
     ck[0] = 0;
     current_it = -1;
 
-    ProgressivelyOnlineInitialize();
-
-    //printf("%lf %lf\n", beta(0), beta.Concentration());
-
-    //auto bak = tree.gamma;
-    //tree.gamma = 1e-9;
-    //BaseHLDA::Initialize();
-    //tree.gamma = bak;
-
-    // Build Ck
-    //TTopic K = tree.GetMaxID();
-    //while ((TTopic) ck.size() < K) ck.push_back(0);
-    //for (TTopic k = 0; k < K; k++)
-    //    for (TWord v = 0; v < corpus.V; v++)
-    //        ck[k] += count(k, v);
-}
-
-void CollapsedSampling::ProgressivelyOnlineInitialize() {
     cout << "Start initialize..." << endl;
     for (auto &doc: docs) {
         for (auto &k: doc.z)
@@ -50,7 +31,7 @@ void CollapsedSampling::ProgressivelyOnlineInitialize() {
         SampleC(doc, false, true);
         SampleZ(doc, true, true);
 
-        if (tree.GetMaxID() > topic_limit) 
+        if (tree.GetMaxID() > topic_limit)
             throw runtime_error("There are too many topics");
     }
     cout << "Initialized with " << tree.GetMaxID() << " topics." << endl;
@@ -64,25 +45,10 @@ void CollapsedSampling::Estimate() {
         if (current_it >= mc_iters)
             mc_samples = -1;
 
-        /*if (it % 5 == 4 && it <= 20) {
-            printf("Resetting...\n");
-            for (auto &doc: docs)
-                ResetZ(doc);
-        }*/
-        if (current_it <= remove_iters)
-            RemovePath();
-
         for (auto &doc: docs) {
-            if (doc.initialized) {
-                SampleC(doc, true, true);
-                SampleZ(doc, true, true);
-            } else {
-                doc.initialized = true;
-                SampleC(doc, false, true);
-                SampleZ(doc, true, true);
-            }
+            SampleC(doc, true, true);
+            SampleZ(doc, true, true);
         }
-        //Recount();
 
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
@@ -133,53 +99,17 @@ void CollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increas
         }
         doc.z[n] = l;
     }
-    double sum = 0;
+
+    /*double sum = 0;
     for (TLen l = 0; l < L; l++)
         sum += (doc.theta[l] = cdl[l] + alpha[l]);
     for (TLen l = 0; l < L; l++)
-        doc.theta[l] /= sum;
-}
-
-void CollapsedSampling::ResetZ(Document &doc) {
-    auto ids = doc.GetIDs();
-    for (size_t n = 0; n < doc.z.size(); n++) {
-        TWord v = doc.w[n];
-        TTopic l = doc.z[n];
-
-        --count(ids[l], v);
-        --ck[ids[l]];
-
-        l = doc.z[n] = generator() % L;
-
-        ++count(ids[l], v);
-        ++ck[ids[l]];
-    }
-}
-
-void CollapsedSampling::Recount() {
-    int K = tree.GetMaxID();
-    count.SetR(K);
-    count.Clear();
-    ck.resize(K);
-    fill(ck.begin(), ck.end(), 0);
-    auto nodes = tree.GetAllNodes();
-    for (auto *node: nodes) node->num_docs = 0;
-
-    for (auto &doc: docs) {
-        auto ids = doc.GetIDs();
-        for (size_t n = 0; n < doc.w.size(); n++) {
-            ck[ids[doc.z[n]]]++;
-            count(ids[doc.z[n]], doc.w[n])++;
-        }
-        tree.UpdateNumDocs(doc.c.back(), 1);
-    }
+        doc.theta[l] /= sum;*/
 }
 
 void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increase_count) {
     // Try delayed update for SampleC
-    bool delayed_update = false;
-    auto old_doc = doc;
-    if (decrease_count && !delayed_update) {
+    if (decrease_count) {
         UpdateDocCount(doc, -1);
         tree.UpdateNumDocs(doc.c.back(), -1);
     }
@@ -195,14 +125,11 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increas
         UpdateDocCount(doc, 1);
         tree.UpdateNumDocs(doc.c.back(), 1);
     }
-
-    if (decrease_count && delayed_update) {
-        UpdateDocCount(old_doc, -1);
-        tree.UpdateNumDocs(old_doc.c.back(), -1);
-    }
 }
 
 TProb CollapsedSampling::WordScore(Document &doc, int l, int topic, Tree::Node *node) {
+    UNUSED(node);
+
     auto *b = doc.BeginLevel(l);
     auto *e = doc.EndLevel(l);
 
@@ -250,7 +177,6 @@ double CollapsedSampling::Perplexity() {
                 double phi = (count(ids[l], v) + beta[l]) /
                              (ck[ids[l]] + beta[l] * corpus.V);
                 prob += theta[l] * phi;
-                //prob += phi;
             }
             log_likelihood += log(prob);
         }
@@ -258,39 +184,6 @@ double CollapsedSampling::Perplexity() {
         double new_doc_avg_likelihood = (log_likelihood - old_log_likelihood) / doc.z.size();
         new_dal.push_back(new_doc_avg_likelihood);
     }
-    /*
-   // Compare new_dal with doc_avg_likelihood
-   std::vector<pair<double, size_t>> amt_increase;
-   for (size_t d = 0; d < docs.size(); d++)
-       amt_increase.push_back(make_pair(new_dal[d] - doc_avg_likelihood[d], d));
-
-   sort(amt_increase.begin(), amt_increase.end());
-   amt_increase.resize(10);
-   if (current_it > 0) {
-       ofstream fout(("log_" + to_string(current_it)).c_str());
-       for (int i = 0; i < 100; i++) {
-           auto d = amt_increase[i].second;
-           fout << d << ' ' << doc_avg_likelihood[d] << " -> " << new_dal[d]
-                << " Old path: ";
-           for (int l = 0; l < L; l++)
-               fout << old_doc_ids[d][l] << ':' << old_doc_sizes[d][l] << ' ';
-
-           fout << " New path: ";
-           for (int l = 0; l < L; l++)
-               fout << docs[d].c[l]->id << ':' << docs[d].c[l]->num_docs << ' ';
-           fout << endl;
-       }
-   }
-
-   doc_avg_likelihood = new_dal;
-   old_doc_ids.resize(docs.size());
-   old_doc_sizes.resize(docs.size());
-   for (size_t d = 0; d < docs.size(); d++) {
-       old_doc_ids[d] = docs[d].GetIDs();
-       old_doc_sizes[d].resize((size_t) L);
-       for (int l = 0; l < L; l++)
-           old_doc_sizes[d][l] = docs[d].c[l]->num_docs;
-   }*/
 
     return exp(-log_likelihood / T);
 }
@@ -312,17 +205,9 @@ void CollapsedSampling::DFSSample(Document &doc) {
     vector<TProb> prob(nodes.size(), -1e9);
 
     // Warning: this is not thread safe
-
-    //std::vector<TProb> myalpha{100, 100, 100, 100};
-    //dirichlet_distribution<TProb> dir(alpha);
     for (int s = 0; s < max(mc_samples, 1); s++) {
         // Resample Z
-        // Random Dirichlet
-
         discrete_distribution<int> mult(doc.theta.begin(), doc.theta.end());
-        //discrete_distribution<int> mult(alpha.begin(), alpha.end());
-
-        // Random multinomial
         if (mc_samples != -1) {
             for (auto &l: doc.z) l = mult(generator);
         }
@@ -347,9 +232,6 @@ void CollapsedSampling::DFSSample(Document &doc) {
             if (node->depth + 1 == L) {
                 prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight);
             } else {
-                /*if (current_it > 15)
-                    prob.push_back(-1e9);
-                else*/
                 prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight +
                                           emptyProbability[node->depth + 1]);
             }
@@ -381,32 +263,5 @@ void CollapsedSampling::UpdateDocCount(Document &doc, int delta) {
         TWord v = doc.w[n];
         count(k, v) += delta;
         ck[k] += delta;
-    }
-}
-
-void CollapsedSampling::RemovePath() {
-    auto nodes = tree.GetAllNodes();
-    vector<bool> selected(nodes.size(), false);
-
-    for (int i = 0; i < remove_paths; i++) {
-        // Select a path to remove
-        int index;
-        do {
-            index = generator() % (int) nodes.size();
-        } while (selected[index] || nodes[index]->depth + 1 != L);
-        selected[index] = true;
-
-        auto *node = nodes[index];
-        node->is_collapsed = true;
-
-        // Reset corresponding documents
-        for (auto &doc: docs) {
-            if (doc.c.back()->id == node->id) {
-                doc.initialized = false;
-                UpdateDocCount(doc, -1);
-                tree.UpdateNumDocs(doc.c.back(), -1);
-                for (auto &l: doc.z) l = generator() % L;
-            }
-        }
     }
 }

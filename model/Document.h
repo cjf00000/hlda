@@ -21,8 +21,6 @@ struct Document {
 
     std::vector<TTopic> GetIDs();
 
-    bool initialized;
-
     void PartitionWByZ(int L);
 
     void Check();

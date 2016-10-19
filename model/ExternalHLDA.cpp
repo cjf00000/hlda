@@ -13,7 +13,7 @@ using namespace std;
 ExternalHLDA::ExternalHLDA(Corpus &corpus, int L,
                            std::vector<TProb> alpha, vector<TProb> beta, std::vector<TProb> gamma,
                            string prefix)
-        : CollapsedSampling(corpus, L, alpha, beta, gamma, -1, -1, -1, -1, -1, -1),
+        : CollapsedSampling(corpus, L, alpha, beta, gamma, -1, -1, -1, -1),
           prefix(prefix) {
 
 }

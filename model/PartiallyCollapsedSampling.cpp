@@ -13,10 +13,10 @@ PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, ve
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples, int mc_iters,
                                                        size_t minibatch_size,
-                                                       int remove_iters, int remove_paths, int topic_limit) :
+                                                       int topic_limit, int threshold) :
         CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters,
-                          remove_iters, remove_paths, topic_limit),
-        minibatch_size(minibatch_size) {
+                          topic_limit),
+        minibatch_size(minibatch_size), threshold(threshold) {
     current_it = -1;
 }
 
@@ -58,34 +58,14 @@ void PartiallyCollapsedSampling::Estimate() {
         current_it = it;
         Clock clk;
 
-        /*if (it == pow(floor(sqrt(it)), 2) && it >= 3) {
-            printf("Resetting...\n");
-            for (auto &doc: docs)
-                ResetZ(doc);
-        }*/
         if (current_it >= mc_iters)
             mc_samples = -1;
 
-        SamplePhi();
-
         for (auto &doc: docs) {
-            if (doc.initialized) {
-                SampleC(doc, true, true);
-                SampleZ(doc, true, true);
-            }
+            SampleC(doc, false, true);
+            SampleZ(doc, true, true);
         }
-
         SamplePhi();
-
-        for (auto &doc: docs) {
-            if (!doc.initialized) {
-                doc.initialized = true;
-                SampleC(doc, false, true);
-                SampleZ(doc, true, true);
-            }
-        }
-
-        //SamplePhi();
 
         auto nodes = tree.GetAllNodes();
         int num_big_nodes = 0;
@@ -97,7 +77,7 @@ void PartiallyCollapsedSampling::Estimate() {
                     num_docs_big += node->num_docs;
             }
 
-        std::vector<int> cl(L);
+        std::vector<int> cl((size_t) L);
         for (auto *node: nodes)
             cl[node->depth]++;
         for (int l=0; l<L; l++)
@@ -107,30 +87,9 @@ void PartiallyCollapsedSampling::Estimate() {
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
-        //printf("Iteration %d, %lu topics, %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-        //       it, nodes.size(), time, throughput, perplexity);
         printf("Iteration %d, %lu topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
                it, nodes.size(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
-}
-
-void PartiallyCollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increase_count) {
-    if (decrease_count) {
-        UpdateDocCount(doc, -1);
-        tree.UpdateNumDocs(doc.c.back(), -1);
-        for (auto *node: doc.c)
-            if (!node->is_collapsed && node->num_docs < 50) {
-                // Become collapsed
-                node->is_collapsed = true;
-            }
-    }
-
-    InitializeTreeWeight();
-
-    DFSSample(doc);
-
-    UpdateDocCount(doc, 1);
-    tree.UpdateNumDocs(doc.c.back(), 1);
 }
 
 void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, bool increase_count) {
@@ -156,17 +115,17 @@ void PartiallyCollapsedSampling::SampleZ(Document &doc, bool decrease_count, boo
                 prob[i] = (alpha[i] + cdl[i]) *
                           (beta[i] + count(ids[i], v)) / (beta[i] * corpus.V + ck[ids[i]]);
             else {
-                //if (current_it < 5)
-                //puts("What?1");
                 prob[i] = (alpha[i] + cdl[i]) * phi(ids[i], v);
             }
 
         l = DiscreteSample(prob.begin(), prob.end(), generator);
         doc.z[n] = l;
 
-        ++cdl[l];
-        ++count(ids[l], v);
-        ++ck[ids[l]];
+        if (increase_count) {
+            ++cdl[l];
+            ++count(ids[l], v);
+            ++ck[ids[l]];
+        }
     }
     /*double sum = 0;
     for (TLen l = 0; l < L; l++)
@@ -180,9 +139,6 @@ TProb PartiallyCollapsedSampling::WordScore(Document &doc,
     // Collapsed
     if (topic == -1 || node->is_collapsed)
         return CollapsedSampling::WordScore(doc, l, topic, node);
-
-    //if (current_it < 5)
-    //puts("What?2");
 
     // Not collapsed
     auto *b = doc.BeginLevel(l);
@@ -199,8 +155,8 @@ TProb PartiallyCollapsedSampling::WordScore(Document &doc,
 void PartiallyCollapsedSampling::SamplePhi() {
     TTopic K = tree.GetMaxID();
     auto nodes = tree.GetAllNodes();
-    int threshold = 50;
-    // TODO: Is it really correct to process collapsed and uncollapsed simutanaeously?
+
+    // Set collapsed
     for (auto *node: nodes)
         node->is_collapsed = node->num_docs < threshold;
 
