@@ -163,13 +163,13 @@ void PartiallyCollapsedSampling::SamplePhi() {
         for (TTopic k = 0; k < K; k++) {
             TProb inv_sum = 1. / (beta[l] * corpus.V + ck[l][k]);
             for (TWord v = 0; v < corpus.V; v++) {
-                TProb prob = (count[l](v, k) + beta[l]) * inv_sum;
+                float prob = (float)((count[l](v, k) + beta[l]) * inv_sum);
                 phi[l](v, k) = prob;
                 log_phi[l](v, k) = prob;
             }
         }
 
         for (TWord v = 0; v < corpus.V; v++)
-            vdLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
+            vsLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
     }
 }
