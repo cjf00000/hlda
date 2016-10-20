@@ -34,7 +34,7 @@ void Softmax(TIterator begin, TIterator end) {
     double maximum = *std::max_element(begin, end);
     double sum = 0;
     for (auto it = begin; it != end; it++) {
-        *it = exp(*it - maximum);
+        *it = expf(*it - maximum);
         sum += *it;
     }
     double inv_sum = 1. / sum;
