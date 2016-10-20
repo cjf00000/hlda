@@ -147,11 +147,6 @@ void CollapsedSampling::DFSSample(Document &doc) {
         }
         doc.PartitionWByZ(L);
 
-        // Compute the score for each layer
-       /* vector<vector<TProb> > scores((size_t) L);
-        for (TLen l = 0; l < L; l++)
-            scores[l] = WordScore(doc, l, 0, tree.NumNodes(l));*/
-
         vector<vector<double> > scores((size_t) L);
         for (TLen l = 0; l < L; l++) {
             // Figure out how many collapsed and how many instantiated

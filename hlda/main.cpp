@@ -4,13 +4,13 @@
 #include "corpus.h"
 #include "CollapsedSampling.h"
 #include "mkl_vml.h"
-//#include "PartiallyCollapsedSampling.h"
+#include "PartiallyCollapsedSampling.h"
 //#include "ExternalHLDA.h"
 
 using namespace std;
 
 DEFINE_string(prefix, "data/nysmaller", "prefix of the corpus");
-DEFINE_string(algo, "cs", "Algorithm, cs, pcs, or es");
+DEFINE_string(algo, "pcs", "Algorithm, cs, pcs, or es");
 DEFINE_int32(L, 4, "number of levels");
 DEFINE_string(alpha, "0.5,0.5,0.5,0.5", "Prior on level assignment, delimited by comma");
 DEFINE_string(beta, "1,0.4,0.3,0.2", "Prior on topics, delimited by comma");
@@ -74,11 +74,11 @@ int main(int argc, char **argv) {
                                       FLAGS_topic_limit);
     }
     else if (FLAGS_algo == "pcs") {
-        /*model = new PartiallyCollapsedSampling(corpus,
+        model = new PartiallyCollapsedSampling(corpus,
                                                FLAGS_L, alpha, beta, gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
-                                               FLAGS_topic_limit, FLAGS_threshold);*/
+                                               FLAGS_topic_limit, FLAGS_threshold);
     }
     else {
         /*model = new ExternalHLDA(corpus,
