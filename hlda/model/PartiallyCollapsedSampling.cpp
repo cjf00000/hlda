@@ -6,6 +6,7 @@
 #include "Clock.h"
 #include "corpus.h"
 #include <iostream>
+#include "mkl_vml.h"
 
 using namespace std;
 
@@ -164,8 +165,11 @@ void PartiallyCollapsedSampling::SamplePhi() {
             for (TWord v = 0; v < corpus.V; v++) {
                 TProb prob = (count[l](v, k) + beta[l]) * inv_sum;
                 phi[l](v, k) = prob;
-                log_phi[l](v, k) = logf(prob);
+                log_phi[l](v, k) = prob;
             }
         }
+
+        for (TWord v = 0; v < corpus.V; v++)
+            vdLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
     }
 }
