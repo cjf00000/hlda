@@ -15,7 +15,7 @@ ExternalHLDA::ExternalHLDA(Corpus &corpus, int L,
                            string prefix)
         : CollapsedSampling(corpus, L, alpha, beta, gamma, -1, -1, -1, -1),
           prefix(prefix) {
-
+    ck.resize((size_t) L);
 }
 
 void ExternalHLDA::Initialize() {
@@ -59,18 +59,20 @@ void ExternalHLDA::ReadTree() {
         }
         nodes.back()->num_docs = ndocs;
 
+        auto *node = nodes.back();
+
         // Read Count matrix
-        TTopic k = (TTopic) nodes.size();
-        count.SetR(k);
-        ck.push_back(0);
+        TTopic k = (TTopic) tree.NumNodes(node->depth);
+        count[node->depth].SetC(k);
+        ck[node->depth].push_back(0);
         for (TWord v = 0; v < corpus.V; v++) {
             sin >> c;
-            count(k - 1, v) = c;
-            ck[k - 1] += c;
+            count[node->depth](v, node->pos) = c;
+            ck[node->depth][node->pos] += c;
             total_count += c;
         }
     }
-    cout << "Read " << tree.GetMaxID() << " nodes, total count = " << total_count << endl;
+    cout << "Read " << tree.GetAllNodes().size() << " nodes, total count = " << total_count << endl;
 }
 
 void ExternalHLDA::ReadPath() {

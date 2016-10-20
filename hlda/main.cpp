@@ -5,7 +5,7 @@
 #include "CollapsedSampling.h"
 #include "mkl_vml.h"
 #include "PartiallyCollapsedSampling.h"
-//#include "ExternalHLDA.h"
+#include "ExternalHLDA.h"
 
 using namespace std;
 
@@ -21,7 +21,7 @@ DEFINE_int32(n_mc_samples, 5, "Number of Monte-Carlo samples, -1 for none.");
 DEFINE_int32(n_mc_iters, 20, "Number of Monte-Carl iterations, -1 for none.");
 DEFINE_int32(minibatch_size, 1000, "Minibatch size for initialization (for pcs)");
 DEFINE_int32(topic_limit, 1000, "Upper bound of number of topics to terminate.");
-DEFINE_string(model_path, "out/run014", "Path of model for es");
+DEFINE_string(model_path, "../hlda-c/out/run014", "Path of model for es");
 DEFINE_string(vis_prefix, "vis_result/tree", "Path of visualization");
 DEFINE_int32(threshold, 50, "Threshold for a topic to be instantiated.");
 
@@ -82,8 +82,8 @@ int main(int argc, char **argv) {
                                                FLAGS_topic_limit, FLAGS_threshold);
     }
     else {
-        /*model = new ExternalHLDA(corpus,
-                                 FLAGS_L, alpha, beta, gamma, FLAGS_model_path);*/
+        model = new ExternalHLDA(corpus,
+                                 FLAGS_L, alpha, beta, gamma, FLAGS_model_path);
     }
 
     model->Initialize();
