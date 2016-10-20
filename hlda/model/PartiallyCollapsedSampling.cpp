@@ -148,8 +148,6 @@ void PartiallyCollapsedSampling::SamplePhi() {
         log_phi[l].SetC(tree.NumNodes(l));
 
         count[l].PermuteColumns(perm);
-        phi[l].PermuteColumns(perm);
-        log_phi[l].PermuteColumns(perm);
 
         Permute(ck[l], perm);
     }

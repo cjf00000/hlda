@@ -136,10 +136,11 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increas
 
 void CollapsedSampling::DFSSample(Document &doc) {
     auto nodes = tree.GetAllNodes();
-    vector<TProb> prob(nodes.size(), -1e9);
+    int S = max(mc_samples, 1);
+    vector<TProb> prob(nodes.size() * S, -1e9);
 
     // Warning: this is not thread safe
-    for (int s = 0; s < max(mc_samples, 1); s++) {
+    for (int s = 0; s < S; s++) {
         // Resample Z
         discrete_distribution<int> mult(doc.theta.begin(), doc.theta.end());
         if (mc_samples != -1) {
@@ -176,18 +177,18 @@ void CollapsedSampling::DFSSample(Document &doc) {
                 node->sum_log_prob = scores[node->depth][node->pos] + node->parent->sum_log_prob;
 
             if (node->depth + 1 == L) {
-                prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight);
+                prob[i*S+s] = node->sum_log_prob + node->sum_log_weight;
             } else {
-                prob[i] = LogSum(prob[i], node->sum_log_prob + node->sum_log_weight +
-                                          emptyProbability[node->depth]);
+                prob[i*S+s] = node->sum_log_prob + node->sum_log_weight +
+                                          emptyProbability[node->depth];
             }
         }
     }
 
     // Sample
     Softmax(prob.begin(), prob.end());
-    int node_number = DiscreteSample(prob.begin(), prob.end(), generator);
-    if (node_number < 0 || node_number >= (int) prob.size())
+    int node_number = DiscreteSample(prob.begin(), prob.end(), generator) / S;
+    if (node_number < 0 || node_number >= (int) nodes.size())
         throw runtime_error("Invalid node number");
     auto *current = nodes[node_number];
 
