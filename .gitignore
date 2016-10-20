@@ -4,6 +4,7 @@ gflags
 .idea
 *.swp
 *.txt
+!CMakeLists.txt
 log_*
 *.swo
 release

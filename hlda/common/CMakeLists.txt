@@ -1,0 +1,2 @@
+add_library(common utils.cpp corpus.cpp readbuf.cpp
+        Tree.cpp DirichletParameter.cpp IDPool.cpp)
