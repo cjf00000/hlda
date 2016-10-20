@@ -142,7 +142,7 @@ void CollapsedSampling::DFSSample(Document &doc) {
     // Warning: this is not thread safe
     for (int s = 0; s < S; s++) {
         // Resample Z
-        discrete_distribution<int> mult(doc.theta.begin(), doc.theta.end());
+        linear_discrete_distribution<double> mult(doc.theta);
         if (mc_samples != -1) {
             for (auto &l: doc.z) l = mult(generator);
         }

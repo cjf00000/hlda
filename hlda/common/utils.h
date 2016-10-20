@@ -88,6 +88,33 @@ private:
     std::vector<std::gamma_distribution<T>> gammas;
 };
 
+template <class T>
+class linear_discrete_distribution {
+public:
+    linear_discrete_distribution(std::vector<T> &prob) {
+        cumsum.resize(prob.size());
+        sum = 0;
+        for (size_t i=0; i<prob.size(); i++)
+            cumsum[i] = sum += prob[i];
+        cumsum.back() = sum * 2 + 1;
+
+        u = std::uniform_real_distribution<double>(0, 1./sum);
+    }
+
+    template <class TGenerator>
+            int operator() (TGenerator &generator) {
+        T pos = u(generator);
+        int i;
+        for (i = 0; i < (int)cumsum.size() && cumsum[i] < pos; i++);
+        return i;
+    }
+
+private:
+    T sum;
+    std::uniform_real_distribution<T> u;
+    std::vector<T> cumsum;
+};
+
 #define UNUSED(x) (void)(x)
 
 template<class T>
