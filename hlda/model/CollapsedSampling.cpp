@@ -226,6 +226,7 @@ std::vector<TProb> CollapsedSampling::WordScore(Document &doc, int l,
 
         for (TTopic k = 0; k < num_instantiated; k++)
             result[k] += local_log_phi(v, k);
+
         for (TTopic k = num_instantiated; k < K; k++)
             result[k] += log_work[k];
 
