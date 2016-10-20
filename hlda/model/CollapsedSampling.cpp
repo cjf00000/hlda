@@ -137,7 +137,7 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count, bool increas
 void CollapsedSampling::DFSSample(Document &doc) {
     auto nodes = tree.GetAllNodes();
     int S = max(mc_samples, 1);
-    vector<float> prob(nodes.size() * S, -1e9);
+    vector<float> prob(nodes.size() * S, -1e9f);
 
     // Warning: this is not thread safe
     for (int s = 0; s < S; s++) {
@@ -179,7 +179,8 @@ void CollapsedSampling::DFSSample(Document &doc) {
             if (node->depth + 1 == L) {
                 prob[i*S+s] = (float)(node->sum_log_prob + node->sum_log_weight);
             } else {
-                prob[i*S+s] = (float)(node->sum_log_prob + node->sum_log_weight +
+                if (new_topic)
+                    prob[i * S + s] = (float) (node->sum_log_prob + node->sum_log_weight +
                                           emptyProbability[node->depth]);
             }
         }

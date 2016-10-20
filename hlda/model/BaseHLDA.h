@@ -56,6 +56,8 @@ protected:
     std::vector<Matrix<TCount> > count;
 
     Matrix<TProb> log_normalization;
+
+    bool new_topic;
 };
 
 

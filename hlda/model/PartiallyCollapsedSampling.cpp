@@ -31,6 +31,9 @@ void PartiallyCollapsedSampling::Initialize() {
     if (minibatch_size == 0)
         minibatch_size = docs.size();
 
+    if (!new_topic)
+        SamplePhi();
+
     for (size_t d_start = 0; d_start < docs.size(); d_start += minibatch_size) {
         size_t d_end = min(docs.size(), d_start + minibatch_size);
         for (size_t d = d_start; d < d_end; d++) {
@@ -44,11 +47,11 @@ void PartiallyCollapsedSampling::Initialize() {
         }
         SamplePhi();
 
-        printf("Processed %lu documents\n", d_end);
+        printf("Processed %lu documents, %d topics\n", d_end, tree.NumTopics());
         if (tree.GetAllNodes().size() > (size_t) topic_limit)
             throw runtime_error("There are too many topics");
     }
-    cout << "Initialized with " << tree.GetAllNodes().size() << " topics." << endl;
+    cout << "Initialized with " << tree.NumTopics() << " topics." << endl;
 
     SamplePhi();
 }
@@ -62,9 +65,10 @@ void PartiallyCollapsedSampling::Estimate() {
             mc_samples = -1;
 
         for (auto &doc: docs) {
-            SampleC(doc, false, true);
+            SampleC(doc, true, true);
             SampleZ(doc, true, true);
         }
+
         SamplePhi();
 
         auto nodes = tree.GetAllNodes();
@@ -87,8 +91,8 @@ void PartiallyCollapsedSampling::Estimate() {
         double time = clk.toc();
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
-        printf("Iteration %d, %lu topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-               it, nodes.size(), num_big_nodes, num_docs_big, time, throughput, perplexity);
+        printf("Iteration %d, %d topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, tree.NumTopics(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
 }
 

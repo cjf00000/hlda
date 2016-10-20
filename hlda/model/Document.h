@@ -17,7 +17,7 @@ struct Document {
     std::vector<TProb> theta;
 
     std::vector<TWord> reordered_w;
-    std::vector<TProb> c_offsets;    // offset for log gamma
+    std::vector<int> c_offsets;    // offset for log gamma
     std::vector<TLen> offsets;
 
     std::vector<TTopic> GetPos();

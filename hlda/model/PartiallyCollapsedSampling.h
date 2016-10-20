@@ -16,12 +16,12 @@ public:
 
     void Initialize() override;
 
-    void Estimate() override;
+    virtual void Estimate() override;
 
 private:
     void SampleZ(Document &doc, bool decrease_count, bool increase_count) override;
 
-    void SamplePhi();
+    virtual void SamplePhi();
 
     size_t minibatch_size;
     int threshold;

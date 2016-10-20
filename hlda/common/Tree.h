@@ -26,7 +26,7 @@ public:
         bool is_collapsed;
     };
 
-    Tree(int L, double gamma);
+    Tree(int L, std::vector<double> gamma, bool default_is_collapsed = true);
 
     ~Tree();
 
@@ -44,11 +44,18 @@ public:
 
     int NumNodes(int l) { return idpool[l].Size(); }
 
+    int NumTopics();
+
+    void Instantiate(Node *root, int branching_factor);
+
+    void DelTree(Node *root);
+
     // Compress the pos, and return a map from old pos to new pos
     std::vector<int> Compress(int l);
 
     int L;
-    double gamma;
+    std::vector<double> gamma;
+    bool default_is_collapsed;
 
 private:
     void getAllNodes(Node *root, std::vector<Node *> &result) const;

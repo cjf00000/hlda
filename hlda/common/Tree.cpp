@@ -10,13 +10,15 @@ using namespace std;
 
 using Node = Tree::Node;
 
-Tree::Tree(int L, double gamma) : L(L), gamma(gamma), idpool((size_t) L), max_id(1) {
+Tree::Tree(int L, std::vector<double> gamma, bool default_is_collapsed)
+        : L(L), gamma(gamma), default_is_collapsed(default_is_collapsed), idpool((size_t) L), max_id(1) {
     root = new Node();
     root->id = 0;
     root->pos = idpool[0].Allocate();
     root->depth = 0;
     root->parent = nullptr;
-    root->is_collapsed = true;
+    root->is_collapsed = default_is_collapsed;
+    root->sum_log_weight = 0;
 }
 
 Tree::~Tree() {
@@ -31,7 +33,7 @@ Node *Tree::AddChildren(Node *parent) {
     node->depth = parent->depth + 1;
     node->id = max_id++;
     node->pos = idpool[node->depth].Allocate();
-    node->is_collapsed = true;
+    node->is_collapsed = default_is_collapsed;
     parent->children.push_back(node);
     return node;
 }
@@ -102,4 +104,69 @@ std::vector<int> Tree::Compress(int l) {
         idpool[l].Allocate();
 
     return result;
+}
+
+int Tree::NumTopics() {
+    auto nodes = GetAllNodes();
+    int sum = 0;
+    for (auto *node: nodes)
+        sum += node->num_docs > 0;
+    return sum;
+}
+
+void Tree::Instantiate(Node *root, int branching_factor) {
+    if (root->depth + 1 == L)
+        return;
+
+    // Sort the children by their num_docs
+    auto cmp = [](Node *a, Node *b) {
+        return a->num_docs > b->num_docs;
+    };
+    sort(root->children.begin(), root->children.end(), cmp);
+
+    // Keep branching_factor non-zero children
+    size_t first_zero;
+    for (first_zero = 0; first_zero < root->children.size()
+                         && root->children[first_zero]->num_docs > 0; first_zero++);
+
+    int num_zeros = (int) root->children.size() - (int) first_zero;
+    while (num_zeros < branching_factor) {
+        // Add nodes
+        AddChildren(root);
+        num_zeros++;
+    }
+
+    while (num_zeros > branching_factor) {
+        // Remove nodes
+        DelTree(root->children.back());
+        num_zeros--;
+    }
+
+    // Compute pi: node.sum_log_weight = the log beta along the path
+    double log_stick_length = 0;
+    std::vector<int> suffix_sum(root->children.size());
+    for (int i = (int) root->children.size() - 2; i >= 0; i--)
+        suffix_sum[i] = suffix_sum[i + 1] + root->children[i + 1]->num_docs;
+
+    for (size_t i = 0; i < root->children.size(); i++) {
+        auto *ch = root->children[i];
+        double V = (ch->num_docs + 1) / (ch->num_docs + 1 + gamma[root->depth] + suffix_sum[i]);
+
+        ch->sum_log_weight = root->sum_log_weight + log(V) + log_stick_length;
+
+        log_stick_length += log(gamma[root->depth] + suffix_sum[i]) -
+                            log(ch->num_docs + 1 + gamma[root->depth] + suffix_sum[i]);
+    }
+
+    // Recurse
+    for (auto *ch: root->children)
+        Instantiate(ch, branching_factor);
+}
+
+void Tree::DelTree(Node *root) {
+    std::vector<Node *> result;
+    getAllNodes(root, result);
+
+    for (int i = (int) result.size() - 1; i >= 0; i--)
+        Remove(result[i]);
 }

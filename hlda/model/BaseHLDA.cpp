@@ -12,9 +12,10 @@ using namespace std;
 BaseHLDA::BaseHLDA(Corpus &corpus, int L,
                    std::vector<TProb> alpha, std::vector<TProb> beta, vector<TProb> gamma,
                    int num_iters, int mc_samples) :
-        tree(L, gamma.back()),
+        tree(L, gamma),
         corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
-        num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L), count((size_t) L), log_normalization(L, 1000) {
+        num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L),
+        count((size_t) L), log_normalization(L, 1000), new_topic(true) {
 
     TDoc D = corpus.D;
     docs.resize((size_t) D);

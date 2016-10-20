@@ -8,7 +8,7 @@
 #include "Document.h"
 
 TEST(Tree, pos) {
-    Tree tree(3, 0.5);
+    Tree tree(3, std::vector<double>{0.5, 0.5, 0.5});
 
     auto *root = tree.GetRoot();
     auto *node1 = tree.AddChildren(root);
@@ -48,4 +48,46 @@ TEST(Tree, pos) {
     EXPECT_EQ(node3->pos, 0);
 
     ASSERT_THAT(doc2.GetPos(), testing::ElementsAre(0, 0, 0));
+}
+
+TEST(Tree, instantiate) {
+    // Firstly, instantiate a tree
+    Tree tree(3, std::vector<double>{0.5, 0.5, 0.5});
+    tree.Instantiate(tree.GetRoot(), 2);
+
+    auto *root = tree.GetRoot();
+
+    // Check tree size
+    EXPECT_EQ(tree.NumNodes(0), 1);
+    EXPECT_EQ(tree.NumNodes(1), 2);
+    EXPECT_EQ(tree.NumNodes(2), 4);
+
+    // Check stick-breaking score
+    EXPECT_FLOAT_EQ(root->children[0]->sum_log_weight, log(1 / 1.5));
+    EXPECT_FLOAT_EQ(root->children[1]->sum_log_weight, log((0.5 / 1.5) * (1 / 1.5)));
+
+    // Add some observations
+    auto *root_ch1 = root->children[1];
+    auto *ch1_ch0 = root_ch1->children[0];
+
+    Document doc;
+    doc.c = decltype(doc.c){root, root_ch1, ch1_ch0};
+    tree.UpdateNumDocs(doc.c.back(), 1);
+
+    // Instantiate again
+    tree.Instantiate(tree.GetRoot(), 2);
+
+    EXPECT_EQ(tree.NumNodes(0), 1);
+    EXPECT_EQ(tree.NumNodes(1), 3);
+    EXPECT_EQ(tree.NumNodes(2), 7);
+
+    EXPECT_EQ(root->children[0]->id, 2);
+
+    EXPECT_FLOAT_EQ(root->children[0]->sum_log_weight, log(2 / 2.5));
+    EXPECT_FLOAT_EQ(root->children[1]->sum_log_weight, log((0.5 / 2.5) * (1 / 1.5)));
+    EXPECT_FLOAT_EQ(root->children[2]->sum_log_weight, log((0.5 / 2.5) * (0.5 / 1.5) * (1 / 1.5)));
+
+    // Remove all instantiated nodes
+    tree.Instantiate(tree.GetRoot(), 0);
+    EXPECT_EQ(tree.GetAllNodes().size(), (size_t) 3);
 }
