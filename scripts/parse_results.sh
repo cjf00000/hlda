@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Parse results for my implementation
-beta=0.5
-for algo in cs_mc-1 cs_mc20 pcs_mc-1 pcs_mc20
+beta=1
+for algo in cs_mc-1 cs_mc30 pcs_mc-1 pcs_mc30
 do
     rm ${algo}.summary
     for i in `ls ../result/${algo}*beta${beta}*.log`
