@@ -70,8 +70,8 @@ void CollapsedSampling::Estimate() {
                     num_docs_big += node->num_docs;
             }
 
-        printf("Iteration %d, %lu topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
-               it, nodes.size(), num_big_nodes, num_docs_big, time, throughput, perplexity);
+        printf("Iteration %d, %d topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
+               it, tree.NumTopics(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
 }
 
