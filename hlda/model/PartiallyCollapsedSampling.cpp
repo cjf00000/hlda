@@ -14,10 +14,10 @@ PartiallyCollapsedSampling::PartiallyCollapsedSampling(Corpus &corpus, int L, ve
                                                        vector<TProb> gamma,
                                                        int num_iters, int mc_samples, int mc_iters,
                                                        size_t minibatch_size,
-                                                       int topic_limit, int threshold) :
+                                                       int topic_limit, int threshold, bool sample_phi) :
         CollapsedSampling(corpus, L, alpha, beta, gamma, num_iters, mc_samples, mc_iters,
                           topic_limit),
-        minibatch_size(minibatch_size), threshold(threshold) {
+        minibatch_size(minibatch_size), threshold(threshold), sample_phi(sample_phi) {
     current_it = -1;
 }
 
@@ -163,19 +163,48 @@ void PartiallyCollapsedSampling::SamplePhi() {
         cout << node->is_collapsed;
     cout << endl;
 
-    for (TLen l = 0; l < L; l++) {
-        TTopic K = tree.NumNodes(l);
+    ComputePhi();
+}
 
-        for (TTopic k = 0; k < K; k++) {
-            TProb inv_sum = 1. / (beta[l] * corpus.V + ck[l][k]);
-            for (TWord v = 0; v < corpus.V; v++) {
-                float prob = (float)((count[l](v, k) + beta[l]) * inv_sum);
-                phi[l](v, k) = prob;
-                log_phi[l](v, k) = prob;
+void PartiallyCollapsedSampling::ComputePhi() {
+    if (!sample_phi) {
+        for (TLen l = 0; l < L; l++) {
+            TTopic K = tree.NumNodes(l);
+
+            for (TTopic k = 0; k < K; k++) {
+                TProb inv_sum = 1. / (beta[l] * corpus.V + ck[l][k]);
+                for (TWord v = 0; v < corpus.V; v++) {
+                    float prob = (float)((count[l](v, k) + beta[l]) * inv_sum);
+                    phi[l](v, k) = prob;
+                    log_phi[l](v, k) = prob;
+                }
             }
-        }
 
-        for (TWord v = 0; v < corpus.V; v++)
-            vsLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
+            for (TWord v = 0; v < corpus.V; v++)
+                vsLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
+        }
+    } else {
+        for (TLen l = 0; l < L; l++) {
+            TTopic K = tree.NumNodes(l);
+
+            for (TTopic k = 0; k < K; k++) {
+                TProb sum = 0;
+                for (TWord v = 0; v < corpus.V; v++) {
+                    float concentration = (float)(count[l](v, k) + beta[l]);
+                    gamma_distribution<float> gammarnd(concentration);
+                    float p = gammarnd(generator);
+                    phi[l](v, k) = p;
+                    sum += p;
+                }
+                TProb inv_sum = 1.0f / sum;
+                for (TWord v = 0; v < corpus.V; v++) {
+                    phi[l](v, k) *= inv_sum;
+                    log_phi[l](v, k) = phi[l](v, k);
+                }
+            }
+
+            for (TWord v = 0; v < corpus.V; v++)
+                vsLn(K, &log_phi[l](v, 0), &log_phi[l](v, 0));
+        }
     }
 }

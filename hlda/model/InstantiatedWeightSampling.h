@@ -14,7 +14,7 @@ public:
                                std::vector<TProb> gamma,
                                int num_iters, int mc_samples, int mc_iters,
                                size_t minibatch_size, int topic_limit,
-                               int threshold, int branching_factor);
+                               int threshold, int branching_factor, bool sample_phi);
 
     void Estimate() override;
 
