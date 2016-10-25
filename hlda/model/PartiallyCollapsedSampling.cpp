@@ -71,6 +71,8 @@ void PartiallyCollapsedSampling::Estimate() {
 
         SamplePhi();
 
+        tree.Check();
+
         auto nodes = tree.GetAllNodes();
         int num_big_nodes = 0;
         int num_docs_big = 0;

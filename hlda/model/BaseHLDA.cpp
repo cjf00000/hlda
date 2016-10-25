@@ -49,9 +49,9 @@ void BaseHLDA::Visualize(std::string fileName, int threshold) {
     auto nodes = tree.GetAllNodes();
     for (auto *node: nodes)
         if (node->num_docs > threshold)
-            fout << "Node" << node->id << " [label=\"" << node->id << '\n'
+            fout << "Node" << node->id << " [label=\""
+                 << node->id << ' ' << node->pos << '\n'
                  << node->num_docs << "\n"
-                 << node->weight << "\n"
                  << TopWords(node->depth, node->pos) << "\"]\n";
 
     // Output edges

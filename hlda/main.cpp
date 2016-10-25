@@ -10,19 +10,17 @@
 
 using namespace std;
 
-DEFINE_string(prefix, "data/nysmaller", "prefix of the corpus");
-DEFINE_string(algo, "pcs", "Algorithm, cs, pcs, is, or es");
+DEFINE_string(prefix, "data/nysmall", "prefix of the corpus");
+DEFINE_string(algo, "is", "Algorithm, cs, pcs, is, or es");
 DEFINE_int32(L, 4, "number of levels");
-DEFINE_string(alpha, "0.5,0.5,0.5,0.5", "Prior on level assignment, delimited by comma");
-//DEFINE_string(beta, "1,0.2,0.1,0.03", "Prior on topics, delimited by comma");
-DEFINE_string(beta, "1,0.4,0.3,0.2", "Prior on topics, delimited by comma");
-DEFINE_string(gamma, "1e-40,1e-30,1e-20", "Parameter of nCRP, delimited by comma");
-//DEFINE_string(gamma, "0.3,0.3,0.3", "Parameter of nCRP, delimited by comma");
-DEFINE_int32(n_iters, 30, "Number of iterations");
+DEFINE_string(alpha, "0.3", "Prior on level assignment, delimited by comma");
+DEFINE_string(beta, "1,0.4,0.25,0.2", "Prior on topics, delimited by comma");
+DEFINE_string(gamma, "1e-8,1e-8,1e-6", "Parameter of nCRP, delimited by comma");
+DEFINE_int32(n_iters, 70, "Number of iterations");
 DEFINE_int32(n_mc_samples, 5, "Number of Monte-Carlo samples, -1 for none.");
-DEFINE_int32(n_mc_iters, 20, "Number of Monte-Carl iterations, -1 for none.");
+DEFINE_int32(n_mc_iters, 30, "Number of Monte-Carl iterations, -1 for none.");
 DEFINE_int32(minibatch_size, 100, "Minibatch size for initialization (for pcs)");
-DEFINE_int32(topic_limit, 1000, "Upper bound of number of topics to terminate.");
+DEFINE_int32(topic_limit, 300, "Upper bound of number of topics to terminate.");
 DEFINE_string(model_path, "../hlda-c/out/run014", "Path of model for es");
 DEFINE_string(vis_prefix, "vis_result/tree", "Path of visualization");
 DEFINE_int32(threshold, 50, "Threshold for a topic to be instantiated.");
