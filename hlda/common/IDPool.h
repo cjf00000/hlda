@@ -22,11 +22,20 @@ public:
             allocated.push_back(true);
             return (int) allocated.size() - 1;
         }
-        return (int) (it - allocated.begin());
+        int id = (int) (it - allocated.begin());
+        allocated[id] = true;
+        return id;
     }
 
     void Free(int id) {
         allocated[id] = false;
+    }
+
+    bool Has(int id) {
+        if (id >= (int) allocated.size())
+            return false;
+
+        return allocated[id];
     }
 
     int Size() { return (int) allocated.size(); }

@@ -135,7 +135,6 @@ void Tree::Instantiate(Node *root, int branching_factor) {
         AddChildren(root);
         num_zeros++;
     }
-
     while (num_zeros > branching_factor) {
         // Remove nodes
         DelTree(root->children.back());
@@ -169,4 +168,21 @@ void Tree::DelTree(Node *root) {
 
     for (int i = (int) result.size() - 1; i >= 0; i--)
         Remove(result[i]);
+}
+
+void Tree::Check() {
+    auto nodes = GetAllNodes();
+    for (int l = 0; l < L; l++) {
+        map<int, bool> m;
+        for (auto *node: nodes)
+            if (node->depth == l) {
+                if (m.find(node->pos) != m.end())
+                    throw runtime_error("Duplicated pos");
+
+                if (!idpool[node->depth].Has(node->pos))
+                    throw runtime_error("Unallocated pos");
+
+                m[node->pos] = true;
+            }
+    }
 }

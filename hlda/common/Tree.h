@@ -50,6 +50,8 @@ public:
 
     void DelTree(Node *root);
 
+    void Check();
+
     // Compress the pos, and return a map from old pos to new pos
     std::vector<int> Compress(int l);
 
