@@ -39,9 +39,8 @@ void InstantiatedWeightSampling::SamplePhi() {
         log_phi[l].SetC(K);
         count[l].SetC(K);
         while (ck[l].size() < (size_t) K) ck[l].push_back(0);
-
-        ComputePhi();
     }
+    ComputePhi();
 }
 
 void InstantiatedWeightSampling::InitializeTreeWeight() {
