@@ -23,7 +23,12 @@ private:
 
     virtual void InitializeTreeWeight() override;
 
+    virtual std::vector<TProb>
+    WordScore(Document &doc, int l, int num_instantiated, int num_collapsed) override;
+
     int branching_factor;
+
+    std::vector<int> num_nontrivial_nodes;
 };
 
 
