@@ -70,6 +70,13 @@ void CollapsedSampling::Estimate() {
                     num_docs_big += node->num_docs;
             }
 
+        std::vector<int> cl((size_t) L);
+        for (auto *node: nodes)
+            cl[node->depth]++;
+        for (int l=0; l<L; l++)
+            printf("%d ", cl[l]);
+        printf("\n");
+
         printf("Iteration %d, %d topics (%d, %d), %.2f seconds (%.2fMtoken/s), perplexity = %.2f\n",
                it, tree.NumTopics(), num_big_nodes, num_docs_big, time, throughput, perplexity);
     }
