@@ -12,7 +12,6 @@
 #include "xorshift.h"
 #include "types.h"
 #include "Document.h"
-#include "DirichletParameter.h"
 
 class Corpus;
 
