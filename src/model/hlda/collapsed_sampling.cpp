@@ -12,6 +12,7 @@
 #include "mkl_vml.h"
 #include "global_lock.h"
 #include <omp.h>
+#include "statistics.h"
 
 using namespace std;
 
@@ -59,20 +60,41 @@ void CollapsedSampling::Estimate() {
             mc_samples = -1;
 
         Clock clk2;
+        Statistics<double> c_time, z_time;
+        lockdoc_time.Reset();
+        s1_time.Reset();
+        s2_time.Reset();
+        s3_time.Reset();
+        s4_time.Reset();
         #pragma omp parallel for schedule(dynamic, 10)
         for (int d = 0; d < corpus.D; d++) {
+            Clock clk;
             auto &doc = docs[d];
             SampleC(doc, true, true);
+            c_time.Add(clk.toc()); clk.tic();
             SampleZ(doc, true, true);
+            z_time.Add(clk.toc()); clk.tic();
         }
-        LOG(INFO) << "Sample took " << clk2.toc() << " seconds"; clk2.tic();
+        if (process_id == 0) {
+            LOG(INFO) << "C took " << c_time.Sum() << " cpu seconds";
+            LOG(INFO) << "Z took " << z_time.Sum() << " cpu seconds";
+            LOG(INFO) << "LockDoc took " << lockdoc_time.Sum() << " cpu seconds";
+            LOG(INFO) << "S1 took " << s1_time.Sum() << " cpu seconds";
+            LOG(INFO) << "S2 took " << s2_time.Sum() << " cpu seconds";
+            LOG(INFO) << "S3 took " << s3_time.Sum() << " cpu seconds";
+            LOG(INFO) << "S4 took " << s4_time.Sum() << " cpu seconds";
+            LOG(INFO) << "Sample took " << clk2.toc() << " seconds"; clk2.tic();
+        }
         AllBarrier();
-        LOG(INFO) << "Barrier took " << clk2.toc() << " seconds"; clk2.tic();
+        if (process_id == 0) 
+            LOG(INFO) << "Barrier took " << clk2.toc() << " seconds"; clk2.tic();
 
         SamplePhi();
-        LOG(INFO) << "SamplePhi took " << clk2.toc() << " seconds"; clk2.tic();
+        if (process_id == 0) 
+            LOG(INFO) << "SamplePhi took " << clk2.toc() << " seconds"; clk2.tic();
         AllBarrier();
-        LOG(INFO) << "Barrier2 took " << clk2.toc() << " seconds"; clk2.tic();
+        if (process_id == 0) 
+            LOG(INFO) << "Barrier2 took " << clk2.toc() << " seconds"; clk2.tic();
 
         auto ret = tree.GetTree();
         int num_big_nodes = 0;
@@ -97,7 +119,8 @@ void CollapsedSampling::Estimate() {
 
         double throughput = corpus.T / time / 1048576;
         double perplexity = Perplexity();
-        LOG(INFO) << "Perplexity took " << clk2.toc() << " seconds"; clk2.tic();
+        if (process_id == 0) 
+            LOG(INFO) << "Perplexity took " << clk2.toc() << " seconds"; clk2.tic();
         LOG_IF(INFO, process_id == 0) 
             << std::fixed << std::setprecision(2)
             << "\x1b[32mIteration " << it 
@@ -157,6 +180,7 @@ void CollapsedSampling::SampleZ(Document &doc,
 
 void CollapsedSampling::SampleC(Document &doc, bool decrease_count,
                                 bool increase_count) {
+    Clock clk;
     // Sample
     int S = max(mc_samples, 1);
     std::vector<decltype(doc.z)> zs(S);
@@ -181,6 +205,7 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count,
             WordScoreInstantiated(doc, l, num_i, scores[l].data());
         }
     }
+    s1_time.Add(clk.toc()); clk.tic();
 
     //std::lock_guard<std::mutex> lock(model_mutex);
     if (decrease_count) {
@@ -192,6 +217,7 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count,
     auto &nodes = ret.nodes;
     vector<TProb> prob(nodes.size() * S, -1e9f);
     std::vector<TProb> sum_log_prob(nodes.size());
+    s2_time.Add(clk.toc()); clk.tic();
 
     // Stage 2
     for (int s = 0; s < S; s++) {
@@ -240,6 +266,7 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count,
         throw runtime_error("Invalid node number");
 
     auto leaf_id = node_number;
+    s3_time.Add(clk.toc()); clk.tic();
 
     // Increase num_docs
     if (increase_count) {
@@ -248,6 +275,7 @@ void CollapsedSampling::SampleC(Document &doc, bool decrease_count,
         doc.c = ret.pos;
         UpdateDocCount(doc, 1);
     }
+    s4_time.Add(clk.toc()); clk.tic();
 }
 
 TProb CollapsedSampling::WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result) {
