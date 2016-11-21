@@ -19,8 +19,8 @@ using namespace std;
 CollapsedSampling::CollapsedSampling(Corpus &corpus, int L,
                                      std::vector<TProb> alpha, std::vector<TProb> beta, vector<double> gamma,
                                      int num_iters, int mc_samples, int mc_iters,
-                                     int topic_limit, int process_id, int process_size) :
-        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples, process_id, process_size), 
+                                     int topic_limit, int process_id, int process_size, bool check) :
+        BaseHLDA(corpus, L, alpha, beta, gamma, num_iters, mc_samples, process_id, process_size, check), 
         mc_iters(mc_iters),
         topic_limit(topic_limit) {}
 
@@ -107,12 +107,8 @@ void CollapsedSampling::Estimate() {
             }
 
         if (process_id == 0) {
-            std::vector<int> cl((size_t) L);
-            for (auto &node: ret.nodes)
-                cl[node.depth]++;
-            for (int l=0; l<L; l++)
-                printf("%d ", cl[l]);
-            printf("\n");
+            LOG(INFO) << "Num nodes: " << ret.num_nodes;
+            LOG(INFO) << "Num instantiated: " << num_instantiated;
         }
 
         double time = clk.toc();
@@ -129,7 +125,7 @@ void CollapsedSampling::Estimate() {
             << time << " seconds (" << throughput << " Mtoken/s), perplexity = "
             << perplexity << "\x1b[0m";
 
-        Check();
+        if (check) Check();
         tree.Check();
         LOG(INFO) << "Check took " << clk2.toc() << " seconds"; clk2.tic();
     }

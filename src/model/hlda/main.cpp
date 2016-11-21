@@ -22,7 +22,6 @@
 using namespace std;
 
 DEFINE_string(prefix, "../data/nysmaller_parted", "prefix of the corpus");
-DEFINE_uint64(doc_part, 2, "document partition number");
 DEFINE_string(algo, "pcs", "Algorithm, cs, pcs, is, or es");
 DEFINE_int32(L, 4, "number of levels");
 DEFINE_string(alpha, "0.3", "Prior on level assignment, delimited by comma");
@@ -31,13 +30,14 @@ DEFINE_string(gamma, "1e-40,1e-30,1e-20", "Parameter of nCRP, delimited by comma
 DEFINE_int32(n_iters, 70, "Number of iterations");
 DEFINE_int32(n_mc_samples, 5, "Number of Monte-Carlo samples, -1 for none.");
 DEFINE_int32(n_mc_iters, 30, "Number of Monte-Carl iterations, -1 for none.");
-DEFINE_int32(minibatch_size, 100, "Minibatch size for initialization (for pcs)");
+DEFINE_int32(minibatch_size, 100000, "Maximal allowed minibatch size for initialization (for pcs)");
 DEFINE_int32(topic_limit, 300, "Upper bound of number of topics to terminate.");
 DEFINE_string(model_path, "../hlda-c/out/run014", "Path of model for es");
 DEFINE_string(vis_prefix, "../vis_result/tree", "Path of visualization");
 DEFINE_int32(threshold, 50, "Threshold for a topic to be instantiated.");
 DEFINE_int32(branching_factor, 2, "Branching factor for instantiated weight sampler.");
 DEFINE_bool(sample_phi, false, "Whether to sample phi or update it with expectation");
+DEFINE_bool(check, false, "Whether turn on checking");
 
 char hostname[100];
 
@@ -77,11 +77,6 @@ int main(int argc, char **argv) {
     MPI_Comm_rank(MPI_COMM_WORLD, &process_id);
     MPI_Comm_size(MPI_COMM_WORLD, &process_size);
 
-    /// split corpus into doc_part * word_part
-    if (FLAGS_doc_part != process_size) {
-        throw runtime_error("Number of processes is incorrect");
-    }
-
     // Parse alpha, beta and gamma
     auto alpha_double = Parse(FLAGS_alpha, FLAGS_L, "alpha");
     auto beta_double = Parse(FLAGS_beta, FLAGS_L, "beta");
@@ -109,13 +104,13 @@ int main(int argc, char **argv) {
         model = new CollapsedSampling(corpus,
                                       FLAGS_L, alpha, beta, gamma,
                                       FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
-                                      FLAGS_topic_limit, process_id, process_size);
+                                      FLAGS_topic_limit, process_id, process_size, FLAGS_check);
     } else if (FLAGS_algo == "pcs") {
         model = new PartiallyCollapsedSampling(corpus,
                                                FLAGS_L, alpha, beta, gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
-                                               FLAGS_topic_limit, FLAGS_threshold, FLAGS_sample_phi, process_id, process_size);
+                                               FLAGS_topic_limit, FLAGS_threshold, FLAGS_sample_phi, process_id, process_size, FLAGS_check);
     } else if (FLAGS_algo == "is") {
         /*model = new InstantiatedWeightSampling(corpus,
                                                FLAGS_L, alpha, beta, gamma,
@@ -130,7 +125,7 @@ int main(int argc, char **argv) {
 
     model->Initialize();
     model->Estimate();
-    model->Visualize(FLAGS_vis_prefix, -1);
+    model->Visualize(FLAGS_vis_prefix, 0);
     delete model;
 
 

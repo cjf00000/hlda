@@ -12,7 +12,7 @@
 #include <mutex>
 #include <mpi.h>
 #include "matrix.h"
-#include "distributed_tree2.h"
+#include "distributed_tree.h"
 #include "xorshift.h"
 #include "types.h"
 #include "document.h"
@@ -27,7 +27,7 @@ class BaseHLDA {
 public:
     BaseHLDA(Corpus &corpus, int L,
              std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<double> gamma,
-             int num_iters, int mc_samples, int process_id, int process_size);
+             int num_iters, int mc_samples, int process_id, int process_size, bool check);
 
     virtual void Initialize() = 0;
 
@@ -50,7 +50,7 @@ protected:
     xorshift& GetGenerator();
 
     int process_id, process_size;
-    DistributedTree2 tree;
+    DistributedTree tree;
     Corpus &corpus;
     int L;
     std::vector<TProb> alpha;
@@ -80,6 +80,7 @@ protected:
     std::vector<std::unique_ptr<std::mutex[]>> topic_mutexes;
 
     Statistics<double> lockdoc_time, s1_time, s2_time, s3_time, s4_time;
+    bool check;
 };
 
 #endif //HLDA_BASEHLDA_H
