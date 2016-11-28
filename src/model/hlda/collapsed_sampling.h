@@ -9,7 +9,7 @@
 
 class CollapsedSampling : public BaseHLDA {
 public:
-    CollapsedSampling(Corpus &corpus, int L,
+    CollapsedSampling(Corpus &corpus, Corpus &to_corpus, Corpus &th_corpus, int L,
                       std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<double> gamma,
                       int num_iters,
                       int mc_samples, int mc_iters,
@@ -20,9 +20,11 @@ public:
     virtual void Estimate() override;
 
 protected:
-    virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count);
+    virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count,
+            bool allow_new_topic = true);
 
-    virtual void SampleC(Document &doc, bool decrease_count, bool increase_count);
+    virtual void SampleC(Document &doc, bool decrease_count, bool increase_count, 
+            bool allow_new_topic = true);
 
     virtual void SamplePhi();
 
@@ -31,6 +33,8 @@ protected:
     TProb WordScoreInstantiated(Document &doc, int l, int num, TProb *result);
 
     double Perplexity();
+
+    double PredictivePerplexity();
 
     void Check();
 

@@ -19,12 +19,13 @@ int calc_font_size(int max_font_size, int min_font_size, int max_size, int min_s
     return int(size);
 };
 
-BaseHLDA::BaseHLDA(Corpus &corpus, int L,
+BaseHLDA::BaseHLDA(Corpus &corpus, Corpus &to_corpus, Corpus &th_corpus, int L,
                    std::vector<TProb> alpha, std::vector<TProb> beta, vector<double> gamma,
                    int num_iters, int mc_samples, int process_id, int process_size, bool check) :
         process_id(process_id), process_size(process_size),
         tree(L, gamma),
-        corpus(corpus), L(L), alpha(alpha), beta(beta), gamma(gamma),
+        corpus(corpus), to_corpus(to_corpus), th_corpus(th_corpus),
+        L(L), alpha(alpha), beta(beta), gamma(gamma),
         num_iters(num_iters), mc_samples(mc_samples), phi((size_t) L), log_phi((size_t) L),
         count(L, corpus.V, omp_get_max_threads()),
         icount(1, process_size, corpus.V, 1/*K*/, row_partition,
@@ -47,6 +48,20 @@ BaseHLDA::BaseHLDA(Corpus &corpus, int L,
         doc.theta.resize((size_t) L);
         fill(doc.theta.begin(), doc.theta.end(), 1. / L);
         doc.initialized = false;
+    }
+    LOG_IF(FATAL, to_corpus.D != th_corpus.D) 
+        << "The size of to and th corpus are different";
+
+    to_docs.resize(to_corpus.D);
+    th_docs.resize(th_corpus.D);
+    for (int d = 0; d < to_corpus.D; d++) {
+        to_docs[d].w = to_corpus.w[d];
+        to_docs[d].z.resize(to_docs[d].w.size());
+        to_docs[d].theta.resize(L);
+
+        th_docs[d].w = th_corpus.w[d];
+        th_docs[d].z.resize(th_docs[d].w.size());
+        th_docs[d].theta.resize(L);
     }
     //shuffle(docs.begin(), docs.end(), generator);
 
