@@ -107,6 +107,11 @@ void DistributedTree::SetThreshold(int threshold) {
     Barrier();
 }
 
+void DistributedTree::SetBranchingFactor(int branching_factor) {
+    tree.SetBranchingFactor(branching_factor);
+    Barrier();
+}
+
 void DistributedTree::Check() {
     //tree.Check();
 }
@@ -116,10 +121,21 @@ std::vector<std::vector<int>> DistributedTree::Compress() {
     return tree.Compress();
 }
 
+void DistributedTree::Instantiate() {
+    Barrier();
+    tree.Instantiate();
+}
+
 std::vector<int> DistributedTree::GetNumInstantiated() {
     return tree.GetNumInstantiated();
 }
 
 void DistributedTree::Barrier() {
     pub_sub.Barrier();
+}
+
+int DistributedTree::AddChildren(int parent_id, int num_docs) {
+    auto ret = tree.AddChildren(parent_id);
+    tree.nodes[ret].num_docs.store(num_docs);
+    return ret;
 }

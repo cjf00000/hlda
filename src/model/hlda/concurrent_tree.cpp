@@ -3,9 +3,10 @@
 #include <memory.h>
 #include <cmath>
 #include "glog/logging.h"
+#include "utils.h"
 
 ConcurrentTree::ConcurrentTree(int L, std::vector<double> gamma) :
-    max_id(1), L(L), threshold(100000000),
+    max_id(1), L(L), threshold(100000000), branching_factor(-1),
     gamma(gamma), num_instantiated(L), num_nodes(L) {
     memset(nodes.data(), 0, sizeof(Node)*MAX_NUM_TOPICS);
     auto &root = nodes[0];
@@ -15,6 +16,10 @@ ConcurrentTree::ConcurrentTree(int L, std::vector<double> gamma) :
 
 bool ConcurrentTree::IsLeaf(int node_id) {
     return nodes[node_id].depth + 1 == L;
+}
+
+bool ConcurrentTree::Exist(int node_id) {
+    return (node_id == 0) || (nodes[node_id].depth);
 }
 
 void ConcurrentTree::DecNumDocs(int old_node_id) {
@@ -74,12 +79,16 @@ ConcurrentTree::RetTree ConcurrentTree::GetTree() {
         auto &node = ret.nodes[i];
         if (node.depth) {
             auto &parent = ret.nodes[node.parent_id];
-            node.log_path_weight = log(node.num_docs) 
-                - log(parent.num_docs + gamma[parent.depth])
-                + parent.log_path_weight;
+            if (branching_factor == -1)
+                node.log_path_weight = log(node.num_docs) 
+                    - log(parent.num_docs + gamma[parent.depth])
+                    + parent.log_path_weight;
+            else
+                node.log_path_weight = nodes[i].log_weight + 
+                    parent.log_path_weight;
         }
         // A nonexistent node
-        if (node.num_docs == 0 && i)
+        if (!Exist(i) || (node.num_docs == 0 && branching_factor == -1))
             node.log_path_weight = -1e9;
         else
             ret.num_nodes[node.depth] = 
@@ -123,17 +132,21 @@ void ConcurrentTree::SetThreshold(int threshold) {
     this->threshold = threshold;
 }
 
+void ConcurrentTree::SetBranchingFactor(int branching_factor) {
+    this->branching_factor = branching_factor;
+}
+
 std::vector<std::vector<int>> ConcurrentTree::Compress() {
-    LOG_IF(FATAL, !nodes[0].num_docs)
-           << "Compressing an empty tree";
+    //LOG_IF(FATAL, !nodes[0].num_docs)
+    //       << "Compressing an empty tree";
     // Sort the pos by decreasing order and remove zero nodes
     std::vector<std::vector<int>> pos_map(L);
     for (int l = 0; l < L; l++) {
         std::vector<std::pair<int, int>> rank;
         for (size_t i = 0; i < max_id; i++)
-            if (nodes[i].depth == l && nodes[i].num_docs)
+            if (nodes[i].depth == l && Exist(i))
                 rank.push_back(std::make_pair(-nodes[i].num_docs, i));
-            else if (!nodes[i].num_docs) {
+            else if (!Exist(i)) {
                 //LOG(INFO) << "Node " << i << " is dead.";
                 // Kill the node
                 nodes[i].parent_id = nodes[i].pos = 
@@ -154,6 +167,57 @@ std::vector<std::vector<int>> ConcurrentTree::Compress() {
     return std::move(pos_map);
 }
 
+void ConcurrentTree::Instantiate() {
+    // Gather the children for each parent
+    std::vector<std::vector<int>> children(MAX_NUM_TOPICS);
+    for (int i = 1; i < max_id; i++)
+        if (Exist(i))
+            children[nodes[i].parent_id].push_back(i);
+
+    for (int i = 0; i < max_id; i++)
+        if (Exist(i) && !IsLeaf(i)) {
+            // Sort the children by their num_docs
+            auto &ch = children[i];
+            std::sort(ch.begin(), ch.end(), [&](int a, int b) {
+                    return nodes[a].num_docs > nodes[b].num_docs;
+            });
+
+            int num_empty = 0;
+            for (auto c: ch)
+                if (nodes[c].num_docs == 0)
+                    num_empty++;
+
+            // Add new nodes if needed
+            for (int j = num_empty; j < branching_factor; j++) {
+                auto child = AddChildren(i);
+                ch.push_back(child);
+                //LOG(INFO) << "Add " << child << " to " << i;
+            }
+            //LOG(INFO) << i << " ch: " << ch;
+
+            std::vector<int> m_gt_i(ch.size());
+            for (int n = (int)ch.size() - 2; n >= 0; n--)
+                m_gt_i[n] = m_gt_i[n+1] + nodes[ch[n+1]].num_docs;
+
+            // Compute stick-breaking weight
+            // Vi ~ Beta(1+mi, gamma+m>i)
+            double log_stick_length = 0;
+            for (size_t n = 0; n < ch.size(); n++) {
+                if (n + 1 == ch.size()) {
+                    nodes[ch[n]].log_weight = log_stick_length;
+                    break;
+                }
+                double a = 1.0 + nodes[ch[n]].num_docs;
+                double b = gamma[nodes[i].depth] + m_gt_i[n];
+                //LOG(INFO) << i << '-' << ch[n] << ' ' << a << ' ' << b;
+
+                nodes[ch[n]].log_weight = log_stick_length + log(a) - log(a + b);
+                log_stick_length += log(b) - log(a + b);
+            }
+           // LOG(INFO) << i << ' ' << nodes[i].log_weight;
+        }
+}
+
 std::vector<int> ConcurrentTree::GetNumInstantiated() {
     return num_instantiated;
 }
@@ -163,6 +227,7 @@ int ConcurrentTree::AddChildren(int parent_id) {
     child.parent_id = parent_id;
     child.depth = nodes[child.parent_id].depth + 1;
     child.pos = num_nodes[child.depth]++;
+    child.num_docs.store(0);
     return max_id - 1;
 }
 

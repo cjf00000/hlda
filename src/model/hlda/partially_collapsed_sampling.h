@@ -5,9 +5,9 @@
 #ifndef HLDA_PARTIALLYCOLLAPSEDSAMPLING_H
 #define HLDA_PARTIALLYCOLLAPSEDSAMPLING_H
 
-#include "collapsed_sampling.h"
+#include "base_hlda.h"
 
-class PartiallyCollapsedSampling : public CollapsedSampling {
+class PartiallyCollapsedSampling : public BaseHLDA {
 public:
     PartiallyCollapsedSampling(Corpus &corpus, Corpus &to_corpus, Corpus &th_corpus, int L,
                                std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<double> gamma,
@@ -15,21 +15,10 @@ public:
                                int topic_limit, int threshold, bool sample_phi, 
                                int process_id, int process_size, bool check);
 
-    void Initialize() override;
-
 protected:
-    void SampleZ(Document &doc, bool decrease_count, bool increase_count,
-            bool allow_new_topic = true) override;
-
     virtual void SamplePhi() override;
 
-    void ComputePhi();
-
-    size_t minibatch_size;
     int threshold;
-
-    bool sample_phi;
-    bool delayed_update;
 };
 
 

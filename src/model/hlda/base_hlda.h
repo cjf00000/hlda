@@ -27,15 +27,17 @@ class BaseHLDA {
 public:
     BaseHLDA(Corpus &corpus, Corpus &to_corpus, Corpus &th_corpus, int L,
              std::vector<TProb> alpha, std::vector<TProb> beta, std::vector<double> gamma,
-             int num_iters, int mc_samples, int process_id, int process_size, bool check);
+             int num_iters, int mc_samples, int mc_iters, size_t minibatch_size, int topic_limit,
+             bool sample_phi,
+             int process_id, int process_size, bool check);
 
-    virtual void Initialize() = 0;
+    virtual void Initialize();
 
-    virtual void Estimate() = 0;
+    virtual void Estimate();
 
     void Visualize(std::string fileName, int threshold = -1);
 
-    virtual double PredictivePerplexity() = 0;
+    double PredictivePerplexity();
 
 protected:
     std::string TopWords(int l, int id, int max_font_size, int min_font_size);
@@ -51,6 +53,26 @@ protected:
 
     xorshift& GetGenerator();
 
+    TProb WordScoreInstantiated(Document &doc, int l, int num, TProb *result);
+
+    TProb WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result);
+
+    virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count,
+            bool allow_new_topic = true);
+
+    virtual void SampleC(Document &doc, bool decrease_count, bool increase_count, 
+            bool allow_new_topic = true);
+
+    virtual void SamplePhi() = 0;
+
+    virtual void ComputePhi();
+
+    double Perplexity();
+
+    void Check();
+
+    void UpdateDocCount(Document &doc, int delta);
+
     int process_id, process_size;
     DistributedTree tree;
     Corpus &corpus, &to_corpus, &th_corpus;
@@ -60,6 +82,9 @@ protected:
     std::vector<TProb> beta;        // Beta for each layer
     std::vector<double> gamma;
     int num_iters, mc_samples;
+    int current_it, mc_iters, topic_limit;
+    size_t minibatch_size;
+
     std::vector<xorshift> generators;
 
     std::vector<Document> docs;
@@ -86,6 +111,8 @@ protected:
     Statistics<double> lockdoc_time, s1_time, s2_time, s3_time, s4_time;
     bool check;
     double compute_phi_time, count_time, sync_time, set_time;
+
+    bool sample_phi;
 };
 
 #endif //HLDA_BASEHLDA_H

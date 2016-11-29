@@ -16,13 +16,15 @@
 #include "corpus.h"
 #include "mkl_vml.h"
 
-#include "collapsed_sampling.h"
 #include "partially_collapsed_sampling.h"
+#include "block_gibbs_sampling.h"
+#include "external_sampling.h"
 
 using namespace std;
 
 DEFINE_string(prefix, "../data/nysmaller_parted", "prefix of the corpus");
-DEFINE_string(algo, "pcs", "Algorithm, cs, pcs, is, or es");
+DEFINE_string(model_path, "../../hlda-c/out/run014", "Prefix of the model, for hlda-c");
+DEFINE_string(algo, "pcs", "Algorithm: pcs, is, or es");
 DEFINE_int32(L, 4, "number of levels");
 DEFINE_string(alpha, "0.3", "Prior on level assignment, delimited by comma");
 DEFINE_string(beta, "1,0.4,0.3,0.2", "Prior on topics, delimited by comma");
@@ -32,7 +34,6 @@ DEFINE_int32(n_mc_samples, 5, "Number of Monte-Carlo samples, -1 for none.");
 DEFINE_int32(n_mc_iters, 30, "Number of Monte-Carl iterations, -1 for none.");
 DEFINE_int32(minibatch_size, 100000, "Maximal allowed minibatch size for initialization (for pcs)");
 DEFINE_int32(topic_limit, 300, "Upper bound of number of topics to terminate.");
-DEFINE_string(model_path, "../hlda-c/out/run014", "Path of model for es");
 DEFINE_string(vis_prefix, "../vis_result/tree", "Path of visualization");
 DEFINE_int32(threshold, 50, "Threshold for a topic to be instantiated.");
 DEFINE_int32(branching_factor, 2, "Branching factor for instantiated weight sampler.");
@@ -103,27 +104,23 @@ int main(int argc, char **argv) {
 
     // Train
     BaseHLDA *model = nullptr;
-    if (FLAGS_algo == "cs") {
-        model = new CollapsedSampling(corpus, to_corpus, th_corpus,
-                                      FLAGS_L, alpha, beta, gamma,
-                                      FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
-                                      FLAGS_topic_limit, process_id, process_size, FLAGS_check);
-    } else if (FLAGS_algo == "pcs") {
+    if (FLAGS_algo == "pcs") {
         model = new PartiallyCollapsedSampling(corpus, to_corpus, th_corpus,
                                                FLAGS_L, alpha, beta, gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
                                                FLAGS_topic_limit, FLAGS_threshold, FLAGS_sample_phi, process_id, process_size, FLAGS_check);
     } else if (FLAGS_algo == "is") {
-        /*model = new InstantiatedWeightSampling(corpus,
+        model = new BlockGibbsSampling(corpus, to_corpus, th_corpus,
                                                FLAGS_L, alpha, beta, gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
-                                               FLAGS_topic_limit, FLAGS_threshold, FLAGS_branching_factor,
-                                               FLAGS_sample_phi);*/
+                                               FLAGS_topic_limit, FLAGS_branching_factor, 
+                                               FLAGS_sample_phi, process_id, process_size, FLAGS_check);
     } else {
-        /*model = new ExternalHLDA(corpus,
-                                 FLAGS_L, alpha, beta, gamma, FLAGS_model_path);*/
+        model = new ExternalSampling(corpus, to_corpus, th_corpus,
+                                     FLAGS_L, alpha, beta, gamma,
+                                     process_id, process_size, FLAGS_check, FLAGS_model_path);
     }
 
     model->Initialize();

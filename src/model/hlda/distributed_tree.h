@@ -39,13 +39,19 @@ public:
     // Global operations
     void SetThreshold(int threshold);
 
+    void SetBranchingFactor(int branching_factor);
+
     void Check();
 
     std::vector<std::vector<int>> Compress();
 
+    void Instantiate();
+
     std::vector<int> GetNumInstantiated();
 
     void Barrier();
+
+    int AddChildren(int parent_id, int num_docs);
 
 private:
     ConcurrentTree tree;
