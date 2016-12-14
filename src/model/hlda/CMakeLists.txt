@@ -9,7 +9,8 @@ add_executable(hlda main.cpp)
 target_link_libraries(hlda hlda_lib util ${MPI_LIBRARIES} ${GLOG} ${GFLAGS} mkl_intel_lp64 mkl_core mkl_sequential m dl)
 
 add_executable(hlda_fmt hlda_fmt.cpp)
-target_link_libraries(hlda_fmt hlda_lib ${MPI_LIBRARIES} util ${GLOG} ${GFLAGS})
+target_link_libraries(hlda_fmt hlda_lib ${MPI_LIBRARIES} util ${GLOG}
+        ${GFLAGS} z)
 
 add_executable(test_mpi test_mpi.cpp)
 target_link_libraries(test_mpi hlda_lib util ${MPI_LIBRARIES} ${GLOG} ${GFLAGS})

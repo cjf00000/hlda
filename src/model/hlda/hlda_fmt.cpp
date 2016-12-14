@@ -16,6 +16,7 @@
 #include "xorshift.h"
 #include "publisher_subscriber.h"
 #include "cva.h"
+#include "gzstream.h"
 
 using namespace std;
 
@@ -92,7 +93,7 @@ int main(int argc, char **argv) {
             for (size_t i = process_id; i < phase_file_list.size(); 
                     i += process_size) {
                 //LOG(INFO) << phase_file_list[i];
-                ReadBuf<ifstream> readbuf(phase_file_list[i].c_str(), 
+                ReadBuf<igzstream> readbuf(phase_file_list[i].c_str(), 
                         100 * 1048576);
 
                 readbuf.Scan([&](std::string doc) {
