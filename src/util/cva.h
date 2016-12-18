@@ -10,6 +10,7 @@
 #include <mpi.h>
 #include "mpi_helpers.h"
 #include <memory.h>
+#include "glog/logging.h"
 
 #include <unistd.h>
 
@@ -45,15 +46,18 @@ public:
     bool should_delete;
 
 public:
-    CVA(const size_t R = 0, T *data = nullptr,
-        size_t *offsets = nullptr, size_t *sizes = nullptr) : R(R) {
+    CVA(const size_t R = 0, T *data = (T*)-1,
+        size_t *offsets = (size_t*)-1, size_t *sizes = (size_t*)-1) : R(R) {
         this->R = R;
-        if (data == nullptr) {
+        if (data == (T*)-1) {
             should_delete = true;
             this->data = nullptr;
             this->offsets = (size_t *) _mm_malloc((R + 1) * sizeof(size_t), ALIGN_SIZE);
             this->sizes = (size_t *) _mm_malloc(R * sizeof(size_t), ALIGN_SIZE);
             old_size = 0;
+            //LOG(INFO) << "Allocating memory " << this->offsets << " " << R;
+            LOG_IF(FATAL, R==0)
+                << "R is zero";
         } else {
             should_delete = false;
             this->data = data;
@@ -88,10 +92,21 @@ public:
 
     ~CVA() {
         if (should_delete) {
+            //LOG(INFO) << "Deallocating memory " << this->offsets;
             if (data) _mm_free(data);
             if (offsets) _mm_free(offsets);
             if (sizes) _mm_free(sizes);
         }
+    }
+
+    void Free() {
+        if (should_delete) {
+            //LOG(INFO) << "Deallocating memory " << this->offsets;
+            if (data) _mm_free(data);
+            if (offsets) _mm_free(offsets);
+            if (sizes) _mm_free(sizes);
+        }
+        should_delete = false;
     }
 
     void SetSize(const size_t idx, const size_t size) {
@@ -160,14 +175,19 @@ public:
         //std::cout << "Recv data " << data_recv_buffer << std::endl;
         //exit(0);
 
-        std::vector<CVA<T>> recv_cva_s(num_nodes);
+        //LOG(INFO) << offset_recv_offsets;
+        //LOG(INFO) << recv_offsets;
+        std::vector<CVA<T>> recv_cva_s;
+        //LOG(INFO) << data_recv_buffer.data();
         for (int i = 0; i < num_nodes; i++) {
             size_t myOffsetBegin = offset_recv_offsets[i];
             size_t myOffsetEnd = offset_recv_offsets[i + 1];
-            recv_cva_s[i] = CVA(myOffsetEnd - myOffsetBegin - 1,
+            recv_cva_s.emplace_back(myOffsetEnd - myOffsetBegin - 1,
                                 data_recv_buffer.data() + data_recv_offsets[i],
                                 recv_offsets.data() + myOffsetBegin,
                                 nullptr);
+            //for (int j = 0; j < myOffsetEnd - myOffsetBegin - 1; j++)
+            //    LOG(INFO) << recv_cva_s[i].offsets[j];
         }
         return recv_cva_s;
     }
