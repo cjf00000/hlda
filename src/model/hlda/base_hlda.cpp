@@ -151,23 +151,25 @@ void BaseHLDA::Initialize() {
                 if (degree_of_parallelism == 1)
                     omp_set_num_threads(min(++mb_count, num_threads));
 
-                num_instantiated = tree.GetNumInstantiated();
+                for (int it = 0; it < init_iiter; it++) {
+                    num_instantiated = tree.GetNumInstantiated();
 #pragma omp parallel for
-                for (size_t d = d_start; d < d_end; d++) {
-                    auto &doc = docs[d];
-
-                    for (auto &k: doc.z)
-                        k = generator() % L;
-
-                    doc.initialized = true;
-                    SampleC(doc, false, true);
-                    SampleZ(doc, true, true);
+                    for (size_t d = d_start; d < d_end; d++) {
+                        auto &doc = docs[d];
+    
+                        for (auto &k: doc.z)
+                            k = generator() % L;
+    
+                        doc.initialized = true;
+                        SampleC(doc, (bool)it, true);
+                        SampleZ(doc, true, true);
+                    }
+                    AllBarrier();
+                    omp_set_num_threads(num_threads);
+                    SamplePhi();
+                    AllBarrier();
+                    //Check();
                 }
-                AllBarrier();
-                omp_set_num_threads(num_threads);
-                SamplePhi();
-                AllBarrier();
-                //Check();
 
                 auto ret = tree.GetTree();
                 LOG(INFO) << "Node: " << process_id
@@ -179,10 +181,12 @@ void BaseHLDA::Initialize() {
             }
         } else {
             for (size_t i = 0; i < num_mbs; i++) {
-                AllBarrier();
-                SamplePhi();
-                AllBarrier();
-                //Check();
+                for (int it = 0; it < init_iiter; it++) {
+                    AllBarrier();
+                    SamplePhi();
+                    AllBarrier();
+                    //Check();
+                }
             }
         }
         MPI_Barrier(comm);

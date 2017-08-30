@@ -42,6 +42,8 @@ public:
 
     void OutputSizes();
 
+    int init_iiter;
+
 protected:
     std::string TopWords(int l, int id, int max_font_size, int min_font_size);
 

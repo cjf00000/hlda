@@ -40,6 +40,7 @@ DEFINE_int32(branching_factor, 2, "Branching factor for instantiated weight samp
 DEFINE_bool(sample_phi, false, "Whether to sample phi or update it with expectation");
 DEFINE_bool(check, false, "Whether turn on checking");
 DEFINE_bool(random_start, false, "Whether start randomly");
+DEFINE_int32(init_iiter, 1, "Inner loop for initialization");
 
 char hostname[100];
 
@@ -134,6 +135,7 @@ int main(int argc, char **argv) {
                                      FLAGS_L, alpha, beta, log_gamma,
                                      process_id, process_size, FLAGS_check, FLAGS_model_path);
     }
+    model->init_iiter = FLAGS_init_iiter;
 
     model->Initialize();
     model->Estimate();

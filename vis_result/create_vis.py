@@ -15,10 +15,12 @@ def calc_font_ratio(min_size, max_size, current_size):
 def font_size(x):
     return int(min_font_size + (max_font_size - min_font_size) * x)
 
+print('Loading meta.json')
 meta = json.loads(open('%s.meta.json'%prefix).read())
 vocab = meta["vocab"]
 nodes = meta["nodes"]
 
+print('Loading count')
 count = np.loadtxt('%s.count'%prefix)
 V = count.shape[1]
 ck = np.sum(count, 1)
@@ -29,6 +31,7 @@ with open('%s.dot'%prefix, 'w') as dot_file:
     dot_file.write('graph tree {\nnode[shape=rectangle]\n')
     # Vertex
     for id, node in enumerate(nodes):
+        print('Topic %d' % id)
         vertex_font_ratio = calc_font_ratio(min_ck, max_ck, ck[id])
         current_count = count[id, :]
         min_count = np.mean(current_count)
