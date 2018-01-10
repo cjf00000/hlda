@@ -13,9 +13,9 @@ double LogGammaDifference(double start, int len) {
     return result;
 }
 
-extern double LogSum(double log_a, double log_b) {
+extern float LogSum(float log_a, float log_b) {
     if (log_a > log_b) std::swap(log_a, log_b);
-    return log_b + log(exp(log_a - log_b) + 1);
+    return log_b + logf(expf(log_a - log_b) + 1);
 }
 
 int bsr(int x)

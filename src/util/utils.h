@@ -70,7 +70,7 @@ void Softmax(TIterator begin, TIterator end) {
 // lgamma(start+len) - lgamma(start)
 extern double LogGammaDifference(double start, int len);
 
-extern double LogSum(double log_a, double log_b);
+extern float LogSum(float log_a, float log_b);
 
 template<class T>
 class beta_distribution {

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <memory.h>
 #include <cmath>
+#include <vector>
 #include "glog/logging.h"
 #include "utils.h"
 
@@ -82,22 +83,31 @@ ConcurrentTree::RetTree ConcurrentTree::GetTree() {
     }
 
     // Step 3: Calculate log path weight as well as num_nodes
+    // HACK: I made many optimizations to make this faster
+    std::vector<float> log_num_docs(current_max_id, -1e9);
+    log_num_docs[0] = logf(ret.nodes[0].num_docs);
     for (int i = 0; i < current_max_id; i++) {
         auto &node = ret.nodes[i];
-        if (node.depth) {
-            auto &parent = ret.nodes[node.parent_id];
-            if (branching_factor == -1)
-                node.log_path_weight = log(node.num_docs) 
-                   // - log(parent.num_docs + gamma[parent.depth])
-                    - lapeb(parent.num_docs, log_gamma[parent.depth])
-                    + parent.log_path_weight;
-            else
-                node.log_path_weight = nodes[i].log_weight + 
-                    parent.log_path_weight;
-        }
         // A nonexistent node
         if (!Exist(i) || (node.num_docs == 0 && branching_factor == -1))
             node.log_path_weight = -1e9;
+        else if (node.depth) {
+            auto &parent = ret.nodes[node.parent_id];
+            if (branching_factor == -1) {
+                float current_l = logf(node.num_docs);
+                log_num_docs[i]  = current_l;
+
+                if (parent.num_docs > 0) {
+                    float parent_l = log_num_docs[node.parent_id];
+                    node.log_path_weight = current_l - parent_l + parent.log_path_weight;
+                }
+                else
+                    node.log_path_weight = current_l - log_gamma[parent.depth] + parent.log_path_weight;
+            }
+            else
+                node.log_path_weight = nodes[i].log_weight +
+                                       parent.log_path_weight;
+        }
         if (Exist(i))
             ret.num_nodes[node.depth] = 
                 std::max(ret.num_nodes[node.depth], node.pos + 1);
@@ -107,9 +117,8 @@ ConcurrentTree::RetTree ConcurrentTree::GetTree() {
     for (int i = 0; i < current_max_id; i++) {
         auto &node = ret.nodes[i];
         if (node.depth + 1 < L) {
-            node.log_path_weight += log_gamma[node.depth] -
-                                    lapeb(node.num_docs, log_gamma[node.depth]);
-                                    //log(node.num_docs + gamma[node.depth]);
+            if (node.num_docs > 0)
+                node.log_path_weight += log_gamma[node.depth] - log_num_docs[i];
         }
     }
 
