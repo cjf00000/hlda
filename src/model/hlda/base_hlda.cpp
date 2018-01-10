@@ -236,13 +236,19 @@ void BaseHLDA::Estimate() {
         }
         int num_syncs = count.GetNumSyncs();
         auto bytes_communicated = count.GetBytesCommunicated();
-        auto sample_time = clk2.toc(); 
+        auto sample_time = clk2.toc();
+
+        clk2.tic();
         AllBarrier();
+        auto barrier_time = clk2.toc();
 
         clk2.tic();
         SamplePhi();
         auto phi_time = clk2.toc();
+
+        clk2.tic();
         AllBarrier();
+        barrier_time += clk2.toc();
 
         auto ret = tree.GetTree();
         int num_big_nodes = 0;
@@ -272,7 +278,6 @@ void BaseHLDA::Estimate() {
             LOG(INFO) << ANSI_YELLOW << "Num nodes: " << ret.num_nodes
                                  << "    Num instantiated: " << num_instantiated << ANSI_NOCOLOR;
         }
-
         double time = clk.toc();
         total_time += time;
 
@@ -301,7 +306,8 @@ void BaseHLDA::Estimate() {
         LOG_IF(INFO, process_id == 0) << "Time usage: "
                   << std::fixed << std::setprecision(2)
                   << " sample:" << sample_time
-                  << " phi:" << phi_time 
+                  << " phi:" << phi_time
+                  << " barrier: " << barrier_time
                   << " perplexity:" << perplexity_time 
                   << " check:" << check_time 
                   << " c:" << c_time.Sum()
@@ -505,8 +511,16 @@ xorshift& BaseHLDA::GetGenerator() {
 }
 
 void BaseHLDA::AllBarrier() {
-    std::thread count_thread([&](){count.Compress();});
-    std::thread tree_thread([&](){tree.Barrier();});
+    std::thread count_thread([&](){
+//        Clock clk;
+        count.Compress();
+//        LOG_IF(INFO, process_id==0) << "Compress" << clk.toc();
+    });
+    std::thread tree_thread([&](){
+//        Clock clk;
+        tree.Barrier();
+//        LOG_IF(INFO, process_id==0) << "Tree Barrier" << clk.toc();
+    });
     count_thread.join();
     tree_thread.join();
 }
@@ -756,49 +770,53 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
     t2_time.Add(clk.toc());
 
     // Make a plan
-#ifndef DONT_USE_VML
-    int minibatch_size = actual_num + 1;
-    int num_minibatches;
-    if (minibatch_size > VECTOR_LENGTH) {
-        num_minibatches = 1;
-        work.resize(minibatch_size);
-    } else {
-        num_minibatches = VECTOR_LENGTH / minibatch_size;
-    }
-
-    for (auto iStart = begin; iStart < end; iStart += num_minibatches) {
-        auto iEnd = std::min(iStart + num_minibatches, end);
-
-        for (auto i = iStart; i < iEnd; i++) {
-            auto c_offset = doc.c_offsets[i];
-            auto v = doc.reordered_w[i];
-
-            auto *buff = &work[(i - iStart) * minibatch_size];
-            for (TTopic k = 0; k < actual_num; k++)
-                buff[k] = local_count.Get(v, offset+k) + c_offset + b;
-
-            buff[actual_num] = c_offset + b;
-        }
-
-        vsLn((iEnd - iStart) * minibatch_size, work.data(), work.data());
-
-        for (auto i = iStart; i < iEnd; i++) {
-            auto *buff = &work[(i - iStart) * minibatch_size];
-            for (TTopic k = 0; k < actual_num; k++)
-                result[k] += buff[k];
-            empty_result += buff[actual_num];
-        }
-    }
-#else
+//#ifndef DONT_USE_VML
+//    int minibatch_size = actual_num + 1;
+//    int num_minibatches;
+//    if (minibatch_size > VECTOR_LENGTH) {
+//        num_minibatches = 1;
+//        work.resize(minibatch_size);
+//    } else {
+//        num_minibatches = VECTOR_LENGTH / minibatch_size;
+//    }
+//
+//    for (auto iStart = begin; iStart < end; iStart += num_minibatches) {
+//        auto iEnd = std::min(iStart + num_minibatches, end);
+//
+//        for (auto i = iStart; i < iEnd; i++) {
+//            auto c_offset = doc.c_offsets[i];
+//            auto v = doc.reordered_w[i];
+//
+//            auto *buff = &work[(i - iStart) * minibatch_size];
+//            for (TTopic k = 0; k < actual_num; k++)
+//                buff[k] = local_count.Get(v, offset+k) + c_offset + b;
+//
+//            buff[actual_num] = c_offset + b;
+//        }
+//
+//        vsLn((iEnd - iStart) * minibatch_size, work.data(), work.data());
+//
+//        for (auto i = iStart; i < iEnd; i++) {
+//            auto *buff = &work[(i - iStart) * minibatch_size];
+//            for (TTopic k = 0; k < actual_num; k++)
+//                result[k] += buff[k];
+//            empty_result += buff[actual_num];
+//        }
+//    }
+//#else
     for (auto i = begin; i < end; i++) {
         auto c_offset = doc.c_offsets[i];
         auto v = doc.reordered_w[i];
+        float my_empty_result = logf(c_offset + b);
         for (TTopic k = 0; k < actual_num; k++)
-            result[k] += logf(local_count.Get(v, offset+k) + c_offset + b);
+            if (local_count.Get(v, offset+k) == 0)
+                result[k] += my_empty_result;
+            else
+                result[k] += logf(local_count.Get(v, offset+k) + c_offset + b);
 
-        empty_result += logf(c_offset + b);
+        empty_result += my_empty_result;
     }
-#endif
+//#endif
     t3_time.Add(clk.toc());clk.tic();
 
     auto w_count = end - begin;

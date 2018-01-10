@@ -10,7 +10,8 @@
 #include <omp.h>
 #include "thread_local.h"
 #include <thread>
-
+#include "clock.h"
+// TODO: make the period of sync tunable
 // Asynchronous Distributed List of Matrices
 class ADLMSparse {
 public:
@@ -375,7 +376,7 @@ public:
                 if (global_stop == process_size)
                     break;
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
         }));
     }
