@@ -219,6 +219,12 @@ void BaseHLDA::Estimate() {
         s3_time.Reset();
         s4_time.Reset();
         wsc_time.Reset();
+        t1_time.Reset();
+        t2_time.Reset();
+        t3_time.Reset();
+        t4_time.Reset();
+        num_c.Reset();
+        num_i.Reset();
         #pragma omp parallel for schedule(dynamic, 10)
         for (int d = 0; d < corpus.D; d++) {
             Clock clk;
@@ -262,6 +268,9 @@ void BaseHLDA::Estimate() {
 
             LOG(INFO) << ANSI_YELLOW << "Num nodes: " << num_nodes
                                  << "    Num instantiated: " << num_i << ANSI_NOCOLOR;
+            auto ret = tree.GetTree();
+            LOG(INFO) << ANSI_YELLOW << "Num nodes: " << ret.num_nodes
+                                 << "    Num instantiated: " << num_instantiated << ANSI_NOCOLOR;
         }
 
         double time = clk.toc();
@@ -309,12 +318,13 @@ void BaseHLDA::Estimate() {
                   << " set:" << set_time;
         OutputSizes();
 
-        /*LOG_IF(INFO, process_id == 0) 
+        LOG_IF(INFO, process_id == 0)
             << t1_time.Sum() << ' '
             << t2_time.Sum() << ' '
             << t3_time.Sum() << ' '
-            << t4_time.Sum();*/
-                
+            << t4_time.Sum() << ' '
+            << num_c.Sum() << ' '
+            << num_i.Sum() << ' ';
     }
     LOG_IF(INFO, process_id == 0) << "Finished in " << total_time << " seconds.";
 }
@@ -615,7 +625,8 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     auto z_bak = doc.z;
 
     auto &generator = GetGenerator();
-    // Stage 1
+    // Stage 1: In the first mc_iters iterations, resample z and compute score for instantiated docs
+    // Otherwise just compute score for instantiated docs
     for (int s = 0; s < S; s++) {
         // Resample Z
         linear_discrete_distribution<TProb> mult(doc.theta);
@@ -646,7 +657,7 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     std::vector<TProb> sum_log_prob(nodes.size());
     s2_time.Add(clk.toc()); clk.tic();
 
-    // Stage 2
+    // Stage 2: compute score for collapsed topics
     for (int s = 0; s < S; s++) {
         doc.z = zs[s];
         doc.PartitionWByZ(L);
@@ -723,6 +734,7 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
 }
 
 TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result) {
+    num_c.Add(num);
     Clock clk;
     auto b = beta[l];
     auto b_bar = b * corpus.V;
@@ -737,7 +749,7 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
     const auto &local_count = count.GetMatrix(l);
 
     // Make sure that we do not access outside the boundary
-    int actual_num = std::min(num, static_cast<int>(local_count.GetC()) - offset); 
+    int actual_num = std::min(num, static_cast<int>(local_count.GetC()) - offset);
     for (int k = actual_num; k < num; k++) 
         result[k] = -1e20f;
 
@@ -787,7 +799,7 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
         empty_result += logf(c_offset + b);
     }
 #endif
-    t3_time.Add(clk.toc());
+    t3_time.Add(clk.toc());clk.tic();
 
     auto w_count = end - begin;
     for (TTopic k = 0; k < actual_num; k++)
@@ -801,6 +813,7 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
 }
 
 TProb BaseHLDA::WordScoreInstantiated(Document &doc, int l, int num, TProb *result) {
+    num_i.Add(num);
     Clock clk;
     memset(result, 0, num*sizeof(TProb));
 
