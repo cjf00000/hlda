@@ -671,6 +671,16 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     std::vector<TProb> sum_log_prob(nodes.size());
     s2_time.Add(clk.toc()); clk.tic();
 
+    int non_zero_topics = 0;
+    for (int i = 0; i < nodes.size(); i++)
+        if (nodes[i].num_docs > 0)
+            ++non_zero_topics;
+    t2_time.Add(non_zero_topics);
+    for (TLen l = 0; l < L; l++) {
+        t3_time.Add(num_instantiated[l]);
+        t4_time.Add(ret.num_nodes[l]);
+    }
+
     // Stage 2: compute score for collapsed topics
     for (int s = 0; s < S; s++) {
         doc.z = zs[s];

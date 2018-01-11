@@ -162,9 +162,9 @@ std::vector<std::vector<int>> ConcurrentTree::Compress() {
     for (int l = 0; l < L; l++) {
         std::vector<std::pair<int, int>> rank;
         for (size_t i = 0; i < max_id; i++)
-            if (nodes[i].depth == l && Exist(i))
+            if (nodes[i].depth == l && Exist(i) && nodes[i].num_docs>0)
                 rank.push_back(std::make_pair(-nodes[i].num_docs, i));
-            else if (!Exist(i)) {
+            else if (!Exist(i) || nodes[i].num_docs==0) {
                 //LOG(INFO) << "Node " << i << " is dead.";
                 // Kill the node
                 nodes[i].parent_id = nodes[i].pos = 
