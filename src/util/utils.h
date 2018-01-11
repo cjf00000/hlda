@@ -8,6 +8,7 @@
 #include <iostream>
 #include <stdexcept>
 
+
 #define show(x) printf("%s : %d\n", #x, x);
 #define showpid(x) printf("pid :\t%d | %s : %d\n", process_id, #x, x);
 #define showone(x) if (process_id == 0) {printf("%s : %d\n", #x, x);}
@@ -56,13 +57,17 @@ int DiscreteSample(TIterator begin, TIterator end, TGenerator &generator) {
 
 template<class TIterator>
 void Softmax(TIterator begin, TIterator end) {
-    double maximum = *std::max_element(begin, end);
-    double sum = 0;
-    for (auto it = begin; it != end; it++) {
-        *it = expf(*it - maximum);
-        sum += *it;
-    }
-    double inv_sum = 1. / sum;
+    float maximum = *std::max_element(begin, end);
+    float sum = 0;
+    for (auto it = begin; it != end; it++)
+        if (*it - maximum > -20) {
+            *it = expf(*it - maximum);
+            sum += *it;
+        } else {
+            *it = 0;
+        }
+
+    float inv_sum = 1. / sum;
     for (auto it = begin; it != end; it++)
         *it *= inv_sum;
 }
