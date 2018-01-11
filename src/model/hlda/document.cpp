@@ -5,10 +5,11 @@
 #include <exception>
 #include <stdexcept>
 #include "document.h"
+#include "clock.h"
 
 using namespace std;
 
-void Document::PartitionWByZ(int L) {
+void Document::PartitionWByZ(int L, bool compute_c) {
     Check();
     offsets.resize((std::size_t) L + 1);
     fill(offsets.begin(), offsets.end(), 0);
@@ -18,7 +19,9 @@ void Document::PartitionWByZ(int L) {
 
     // Counting sort
     // Count
-    for (auto k: z) offsets[k + 1]++;
+    for (auto k: z) offsets[k]++;
+    for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
+    offsets[0] = 0;
     for (int l = 1; l <= L; l++) offsets[l] += offsets[l - 1];
 
     // Scatter
@@ -29,6 +32,9 @@ void Document::PartitionWByZ(int L) {
     for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
     offsets[0] = 0;
 
+    if (!compute_c)
+        return;
+
     // Compute c_offsets
     c_offsets.resize(w.size());
     for (int l = 0; l < L; l++) {
@@ -36,11 +42,10 @@ void Document::PartitionWByZ(int L) {
         TLen end = offsets[l + 1];
 
         TLen j;
-        for (TLen i = begin; i != end; i = j) {
-            for (j = i; j != end && reordered_w[i] == reordered_w[j]; j++);
-            for (TLen k = i; k < j; k++)
-                c_offsets[k] = k - i;
-        }
+        c_offsets[begin] = 0;
+        int cnt = 0;
+        for (TLen i = begin+1; i < end; i++)
+            c_offsets[i] = cnt = (cnt+1) * (reordered_w[i]==reordered_w[i-1]);
     }
 }
 

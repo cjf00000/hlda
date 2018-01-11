@@ -572,8 +572,8 @@ void BaseHLDA::UpdateICount() {
 }
 
 void BaseHLDA::SampleZ(Document &doc,
-                                         bool decrease_count, bool increase_count,
-                                         bool allow_new_topic) {
+                       bool decrease_count, bool increase_count,
+                       bool allow_new_topic) {
     //std::lock_guard<std::mutex> lock(model_mutex);
     std::vector<TCount> cdl((size_t) L);
     std::vector<TProb> prob((size_t) L);
@@ -635,7 +635,7 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     // Sample
     int S = max(mc_samples, 1);
     std::vector<decltype(doc.z)> zs(S);
-    vector<vector<vector<TProb>>> all_scores((size_t) S);
+    vector<vector<vector<TProb>>> all_scores((size_t) S); // S * L * nodes per layer
     auto z_bak = doc.z;
 
     auto &generator = GetGenerator();
@@ -643,12 +643,15 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     // Otherwise just compute score for instantiated docs
     for (int s = 0; s < S; s++) {
         // Resample Z
-        linear_discrete_distribution<TProb> mult(doc.theta);
+        Clock clk3;
+        float scale = double(L) / (double(generator.max())+1);
         if (mc_samples != -1) {
-            for (auto &l: doc.z) l = (TTopic) mult(generator);
+            for (auto &l: doc.z) l = (TTopic) (generator() * scale);
         }
         zs[s] = doc.z;
-        doc.PartitionWByZ(L);
+
+        doc.PartitionWByZ(L, false);
+        t3_time.Add(clk3.toc());
 
         auto &scores = all_scores[s]; scores.resize(L);
         for (TLen l = 0; l < L; l++) {
@@ -671,20 +674,12 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     std::vector<TProb> sum_log_prob(nodes.size());
     s2_time.Add(clk.toc()); clk.tic();
 
-    int non_zero_topics = 0;
-    for (int i = 0; i < nodes.size(); i++)
-        if (nodes[i].num_docs > 0)
-            ++non_zero_topics;
-    t2_time.Add(non_zero_topics);
-    for (TLen l = 0; l < L; l++) {
-        t3_time.Add(num_instantiated[l]);
-        t4_time.Add(ret.num_nodes[l]);
-    }
-
     // Stage 2: compute score for collapsed topics
     for (int s = 0; s < S; s++) {
+        Clock clk4;
         doc.z = zs[s];
         doc.PartitionWByZ(L);
+        t4_time.Add(clk4.toc());
 
         auto &scores = all_scores[s];
         for (TLen l = 0; l < L; l++) {
@@ -695,9 +690,10 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
 
             scores[l].resize(num_i + num_collapsed + 1);
             if (allow_new_topic) {
-                scores[l].back() = WordScoreCollapsed(doc, l,
+                float score = WordScoreCollapsed(doc, l,
                                                   num_i, num_collapsed,
                                                   scores[l].data()+num_i);
+                scores[l].back() = score;
             } else {
                 WordScoreInstantiated(doc, l, num_i + num_collapsed, 
                         scores[l].data());
@@ -706,7 +702,6 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
         }
     }
     s3_time.Add(clk.toc()); clk.tic();
-
     // Stage 3
     for (int s = 0; s < S; s++) {
         auto &scores = all_scores[s];
@@ -734,16 +729,13 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
             }
         }
     }
-
     // Sample
-    //auto old_prob = prob; // TODO
     Softmax(prob.begin(), prob.end());
     int node_number = DiscreteSample(prob.begin(), prob.end(), generator) / S;
     if (node_number < 0 || node_number >= (int) nodes.size())
         throw runtime_error("Invalid node number");
 
     auto leaf_id = node_number;
-    s4_time.Add(clk.toc()); clk.tic();
 
     // Increase num_docs
     if (increase_count) {
@@ -752,14 +744,14 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
         doc.c = ret.pos;
         UpdateDocCount(doc, 1);
     } if (!allow_new_topic) {
-        //LOG(INFO) << leaf_id << " " << old_prob;
         doc.c = tree.GetPath(leaf_id).pos;
     }
+    s4_time.Add(clk.toc());
 }
 
 TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result) {
-    num_c.Add(num);
     Clock clk;
+    num_c.Add(num);
     auto b = beta[l];
     auto b_bar = b * corpus.V;
 
@@ -776,8 +768,6 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
     int actual_num = std::min(num, static_cast<int>(local_count.GetC()) - offset);
     for (int k = actual_num; k < num; k++) 
         result[k] = -1e20f;
-
-    t2_time.Add(clk.toc());
 
     // Make a plan
 //#ifndef DONT_USE_VML
@@ -818,16 +808,17 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
         auto c_offset = doc.c_offsets[i];
         auto v = doc.reordered_w[i];
         float my_empty_result = logf(c_offset + b);
-        for (TTopic k = 0; k < actual_num; k++)
-            if (local_count.Get(v, offset+k) == 0)
+        for (TTopic k = 0; k < actual_num; k++) {
+            auto cnt = local_count.Get(v, offset + k);
+            if (cnt == 0)
                 result[k] += my_empty_result;
             else
-                result[k] += logf(local_count.Get(v, offset+k) + c_offset + b);
+                result[k] += logf(cnt + c_offset + b);
+        }
 
         empty_result += my_empty_result;
     }
 //#endif
-    t3_time.Add(clk.toc());clk.tic();
 
     auto w_count = end - begin;
     for (TTopic k = 0; k < actual_num; k++)
@@ -836,7 +827,7 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
 
     empty_result -= lgamma(b_bar + w_count) - lgamma(b_bar);
     wsc_time.Add(actual_num);
-    t4_time.Add(clk.toc());
+    t2_time.Add(clk.toc());
     return empty_result;
 }
 

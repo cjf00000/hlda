@@ -23,7 +23,7 @@ struct Document {
 
     bool initialized;
 
-    void PartitionWByZ(int L);
+    void PartitionWByZ(int L, bool compute_c=true);
 
     void Check();
 
