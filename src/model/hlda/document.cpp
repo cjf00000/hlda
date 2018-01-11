@@ -9,6 +9,7 @@
 
 using namespace std;
 
+
 void Document::PartitionWByZ(int L, bool compute_c) {
     Check();
     offsets.resize((std::size_t) L + 1);
@@ -19,9 +20,7 @@ void Document::PartitionWByZ(int L, bool compute_c) {
 
     // Counting sort
     // Count
-    for (auto k: z) offsets[k]++;
-    for (int l = L; l > 0; l--) offsets[l] = offsets[l - 1];
-    offsets[0] = 0;
+    for (auto k: z) offsets[k + 1]++;
     for (int l = 1; l <= L; l++) offsets[l] += offsets[l - 1];
 
     // Scatter
@@ -40,6 +39,9 @@ void Document::PartitionWByZ(int L, bool compute_c) {
     for (int l = 0; l < L; l++) {
         TLen begin = offsets[l];
         TLen end = offsets[l + 1];
+
+        if (begin==end)
+            continue;
 
         TLen j;
         c_offsets[begin] = 0;
