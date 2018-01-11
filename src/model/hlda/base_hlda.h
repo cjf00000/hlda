@@ -58,9 +58,9 @@ protected:
 
     xorshift& GetGenerator();
 
-    TProb WordScoreInstantiated(Document &doc, int l, int num, TProb *result);
+    inline TProb WordScoreInstantiated(Document &doc, int l, int num, TProb *result);
 
-    TProb WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result);
+    inline TProb WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result);
 
     virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count,
             bool allow_new_topic = true);

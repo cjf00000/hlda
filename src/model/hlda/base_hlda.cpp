@@ -657,6 +657,7 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
         for (TLen l = 0; l < L; l++) {
             TTopic num_i = (TTopic) num_instantiated[l];
             scores[l].resize(num_i);
+#pragma forceinline
             WordScoreInstantiated(doc, l, num_i, scores[l].data());
         }
     }
@@ -690,11 +691,12 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
 
             scores[l].resize(num_i + num_collapsed + 1);
             if (allow_new_topic) {
-                float score = WordScoreCollapsed(doc, l,
-                                                  num_i, num_collapsed,
-                                                  scores[l].data()+num_i);
-                scores[l].back() = score;
+#pragma forceinline
+                scores[l].back() = WordScoreCollapsed(doc, l,
+                                                      num_i, num_collapsed,
+                                                      scores[l].data()+num_i);
             } else {
+#pragma forceinline
                 WordScoreInstantiated(doc, l, num_i + num_collapsed, 
                         scores[l].data());
                 scores[l].back() = -1e20f;
