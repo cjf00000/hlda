@@ -6,8 +6,7 @@ import time
 import subprocess
 
 #################### Common Parameters ####################
-mpi_cmd = "OMP_NUM_THREADS=12 yhrun -p nsfc2 --ntasks-per-node=2 --cpu_bind=rank_ldom -n 1 "
-#mpi_cmd = "OMP_NUM_THREADS=%s yhrun -p nsfc2 --cpu_bind=rank_ldom -N 1 " % sys.argv[1]
+mpi_cmd = "OMP_NUM_THREADS=12 "
 hosts = ""
 
 #################### LDA Parameters ####################
