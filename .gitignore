@@ -11,3 +11,5 @@ release
 *.summary
 *.log
 hlda_test/lib
+third_party
+data
