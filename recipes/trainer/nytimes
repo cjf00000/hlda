@@ -6,13 +6,13 @@ import time
 import subprocess
 
 #################### Common Parameters ####################
-mpi_cmd = "OMP_NUM_THREADS=12 "
+mpi_cmd = "OMP_NUM_THREADS=12 numactl -N 1 "
 hosts = ""
 
 #################### LDA Parameters ####################
 exe_file = "./src/model/hlda/hlda" 
 params = {
-'prefix': "../data/nytimes_new/nytimes",
+'prefix': "../data/nytimes/nytimes",
 'beta': "1,0.5,0.25,0.125",
 'log_gamma': "-40",
 #'alpha': "0.2",

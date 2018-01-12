@@ -644,11 +644,9 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
     for (int s = 0; s < S; s++) {
         // Resample Z
         Clock clk3;
-        float scale = double(L) / (double(generator.max())+100);
-//        uniform_int_distribution<int> mult(0, L-1);
         if (mc_samples != -1) {
-            for (auto &l: doc.z) l = (TTopic) (generator() * scale);
-//            for (auto &l: doc.z) l = (TTopic) mult(generator);
+            for (auto &l: doc.z)
+                l = (TTopic)(((unsigned long long) generator() * L) >> 32);
         }
         zs[s] = doc.z;
 

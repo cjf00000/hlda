@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-src/model/hlda/hlda_fmt -prefix ../data/nytimes_new/nytimes -num_blocks 1 -test_proportion 0.05
+src/model/hlda/hlda_fmt -prefix ../data/nytimes/nytimes -num_blocks 1 -test_proportion 0.05
