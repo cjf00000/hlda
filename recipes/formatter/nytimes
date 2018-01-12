@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+yhrun -N 1 -p nsfc2 src/model/hlda/hlda_fmt -prefix ../data/nytimes_new/nytimes -num_blocks 1 -test_proportion 0.05
