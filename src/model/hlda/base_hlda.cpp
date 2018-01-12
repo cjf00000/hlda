@@ -494,16 +494,16 @@ void BaseHLDA::PermuteC(std::vector<std::vector<int>> &perm) {
 
 void BaseHLDA::LockDoc(Document &doc) {
     Clock clk;
-    for (int l = 0; l < L; l++)
-        if (doc.c[l] >= num_instantiated[l])
-            topic_mutexes[l][doc.c[l]].lock();
+//    for (int l = 0; l < L; l++)
+//        if (doc.c[l] >= num_instantiated[l])
+//            topic_mutexes[l][doc.c[l]].lock();
     lockdoc_time.Add(clk.toc());
 }
 
 void BaseHLDA::UnlockDoc(Document &doc) {
-    for (int l = 0; l < L; l++)
-        if (doc.c[l] >= num_instantiated[l])
-            topic_mutexes[l][doc.c[l]].unlock();
+//    for (int l = 0; l < L; l++)
+//        if (doc.c[l] >= num_instantiated[l])
+//            topic_mutexes[l][doc.c[l]].unlock();
 }
 
 xorshift& BaseHLDA::GetGenerator() {
