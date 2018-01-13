@@ -156,9 +156,10 @@ void BaseHLDA::Initialize() {
 #pragma omp parallel for
                     for (size_t d = d_start; d < d_end; d++) {
                         auto &doc = docs[d];
-    
-                        for (auto &k: doc.z)
-                            k = generator() % L;
+
+                        if (it == 0)
+                            for (auto &k: doc.z)
+                                k = generator() % L;
     
                         doc.initialized = true;
                         SampleC(doc, (bool)it, true);
@@ -702,7 +703,23 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
                 scores[l].back() = -1e20f;
             }
         }
+#ifdef BAD_LAYOUT
+        // Brute-Force computing the score for each path
+        for (size_t i = 0; i < nodes.size(); i++) {
+            if (nodes[i].depth + 1 == L) {
+                std::vector<int> c(L);
+                int current_node = i;
+                for (int l = L-1; l >=0; l--) {
+                    c[l] = nodes[current_node].pos;
+                    current_node = nodes[current_node].parent_id;
+                }
+                auto result = WordScoreCollapsedPath(doc, c);
+                LOG_IF(FATAL, result>100) << "Just to spend time...";
+            }
+        }
+#endif
     }
+
     s3_time.Add(clk.toc()); clk.tic();
     // Stage 3
     for (int s = 0; s < S; s++) {
@@ -771,41 +788,6 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
     for (int k = actual_num; k < num; k++) 
         result[k] = -1e20f;
 
-    // Make a plan
-//#ifndef DONT_USE_VML
-//    int minibatch_size = actual_num + 1;
-//    int num_minibatches;
-//    if (minibatch_size > VECTOR_LENGTH) {
-//        num_minibatches = 1;
-//        work.resize(minibatch_size);
-//    } else {
-//        num_minibatches = VECTOR_LENGTH / minibatch_size;
-//    }
-//
-//    for (auto iStart = begin; iStart < end; iStart += num_minibatches) {
-//        auto iEnd = std::min(iStart + num_minibatches, end);
-//
-//        for (auto i = iStart; i < iEnd; i++) {
-//            auto c_offset = doc.c_offsets[i];
-//            auto v = doc.reordered_w[i];
-//
-//            auto *buff = &work[(i - iStart) * minibatch_size];
-//            for (TTopic k = 0; k < actual_num; k++)
-//                buff[k] = local_count.Get(v, offset+k) + c_offset + b;
-//
-//            buff[actual_num] = c_offset + b;
-//        }
-//
-//        vsLn((iEnd - iStart) * minibatch_size, work.data(), work.data());
-//
-//        for (auto i = iStart; i < iEnd; i++) {
-//            auto *buff = &work[(i - iStart) * minibatch_size];
-//            for (TTopic k = 0; k < actual_num; k++)
-//                result[k] += buff[k];
-//            empty_result += buff[actual_num];
-//        }
-//    }
-//#else
     for (auto i = begin; i < end; i++) {
         auto c_offset = doc.c_offsets[i];
         auto v = doc.reordered_w[i];
@@ -817,10 +799,8 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
             else
                 result[k] += logf(cnt + c_offset + b);
         }
-
         empty_result += my_empty_result;
     }
-//#endif
 
     auto w_count = end - begin;
     for (TTopic k = 0; k < actual_num; k++)
@@ -832,6 +812,53 @@ TProb BaseHLDA::WordScoreCollapsed(Document &doc, int l, int offset, int num, TP
     t2_time.Add(clk.toc());
     return empty_result;
 }
+
+TProb BaseHLDA::WordScoreCollapsedPath(Document &doc, std::vector<int> c) {
+    // Compute the score for the path c
+    // TODO: this is still optimized because of the sort
+    float result = 0;
+    for (int l = 0; l < L; l++) {
+        auto begin = doc.BeginLevel(l);
+        auto end = doc.EndLevel(l);
+        const auto &local_count = count.GetMatrix(l);
+        auto b = beta[l];
+        auto b_bar = b * corpus.V;
+        // Contains unknown topic
+        if (c[l] >= local_count.GetC())
+            return -1e20f;
+
+        for (auto i = begin; i < end; i++) {
+            auto c_offset = doc.c_offsets[i];
+            auto v        = doc.reordered_w[i];
+            auto cnt      = max((int)local_count.Get(v, c[l]), 0);
+            if (cnt == 0)
+                result += logf(c_offset + b);
+            else
+                result += logf(cnt + c_offset + b);
+        }
+
+        auto w_count = end - begin;
+        result -= lgamma(local_count.GetSum(c[l]) + b_bar + w_count) -
+                  lgamma(local_count.GetSum(c[l]) + b_bar);
+
+        if (result > 10) {
+            for (int i = begin; i < end; i++) {
+                auto c_offset = doc.c_offsets[i];
+                auto v        = doc.reordered_w[i];
+                auto cnt      = max((int)local_count.Get(v, c[l]), 0);
+                LOG(INFO) << c_offset << ' ' << v << ' ' << c[l] << ' ' << local_count.GetC() << ' ' << b << ' '
+                          << cnt << ' ' << logf(cnt + c_offset + b);
+            }
+            LOG(INFO) << b_bar << ' ' << w_count << ' ' << local_count.GetSum(c[l]) << ' '
+                      << lgamma(local_count.GetSum(c[l]) + b_bar + w_count) -
+                         lgamma(local_count.GetSum(c[l]) + b_bar);
+        }
+
+        LOG_IF(FATAL, result>10) << "Result is positive " << result;
+    }
+    return result;
+}
+
 
 TProb BaseHLDA::WordScoreInstantiated(Document &doc, int l, int num, TProb *result) {
     num_i.Add(num);

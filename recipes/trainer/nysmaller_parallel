@@ -21,7 +21,7 @@ params = {
 'init_iiter': "10",
 'n_mc_iters': "30",
 'n_iters': "70",
-'threshold': 0 #50000
+'threshold': 0
 }
 lda = mpi_cmd + hosts + exe_file
 for p, v in params.iteritems():

@@ -62,6 +62,8 @@ protected:
 
     inline TProb WordScoreCollapsed(Document &doc, int l, int offset, int num, TProb *result);
 
+    TProb WordScoreCollapsedPath(Document &doc, std::vector<int> c);
+
     virtual void SampleZ(Document &doc, bool decrease_count, bool increase_count,
             bool allow_new_topic = true);
 
