@@ -714,7 +714,7 @@ void BaseHLDA::SampleC(Document &doc, bool decrease_count,
                     current_node = nodes[current_node].parent_id;
                 }
                 auto result = WordScoreCollapsedPath(doc, c);
-                LOG_IF(FATAL, result>100) << "Just to spend time...";
+                LOG_IF(FATAL, result>1e100) << "Just to spend time...";
             }
         }
 #endif
@@ -840,21 +840,6 @@ TProb BaseHLDA::WordScoreCollapsedPath(Document &doc, std::vector<int> c) {
         auto w_count = end - begin;
         result -= lgamma(local_count.GetSum(c[l]) + b_bar + w_count) -
                   lgamma(local_count.GetSum(c[l]) + b_bar);
-
-        if (result > 10) {
-            for (int i = begin; i < end; i++) {
-                auto c_offset = doc.c_offsets[i];
-                auto v        = doc.reordered_w[i];
-                auto cnt      = max((int)local_count.Get(v, c[l]), 0);
-                LOG(INFO) << c_offset << ' ' << v << ' ' << c[l] << ' ' << local_count.GetC() << ' ' << b << ' '
-                          << cnt << ' ' << logf(cnt + c_offset + b);
-            }
-            LOG(INFO) << b_bar << ' ' << w_count << ' ' << local_count.GetSum(c[l]) << ' '
-                      << lgamma(local_count.GetSum(c[l]) + b_bar + w_count) -
-                         lgamma(local_count.GetSum(c[l]) + b_bar);
-        }
-
-        LOG_IF(FATAL, result>10) << "Result is positive " << result;
     }
     return result;
 }
