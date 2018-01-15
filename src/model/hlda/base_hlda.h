@@ -40,7 +40,11 @@ public:
 
     double PredictivePerplexity();
 
+    void OutputTheta();
+
     void OutputSizes();
+
+    void SetOutfile(std::string outfile);
 
     int init_iiter;
 
@@ -125,6 +129,8 @@ protected:
     MPI_Comm comm;
 
     std::vector<std::vector<TProb>> log_work;
+
+    std::string outfile;
 };
 
 #endif //HLDA_BASEHLDA_H

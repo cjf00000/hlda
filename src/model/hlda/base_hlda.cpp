@@ -3,12 +3,14 @@
 //
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
 #include <iomanip>
 #include <sstream>
 #include <random>
 #include <omp.h>
 #include <thread>
+#include <map>
 #include "base_hlda.h"
 #include "clock.h"
 #include "hlda_corpus.h"
@@ -107,6 +109,10 @@ BaseHLDA::BaseHLDA(HLDACorpus &corpus, HLDACorpus &to_corpus, HLDACorpus &th_cor
 
     log_work = decltype(log_work)(omp_get_max_threads(), std::vector<TProb>(VECTOR_LENGTH));
     //LOG(INFO) << "Done";
+}
+
+void BaseHLDA::SetOutfile(std::string outfile) {
+    this->outfile = outfile;
 }
 
 void BaseHLDA::Initialize() {
@@ -333,6 +339,7 @@ void BaseHLDA::Estimate() {
             << num_c.Sum() << ' '
             << num_i.Sum() << ' ';
     }
+    OutputTheta();
     LOG_IF(INFO, process_id == 0) << "Finished in " << total_time << " seconds.";
 }
 
@@ -1076,6 +1083,10 @@ double BaseHLDA::PredictivePerplexity() {
 
     double local_log_likelihood = 0;
     size_t local_T = 0;
+
+    auto ret = tree.GetTree();
+    auto K   = ret.num_nodes.size();
+
 #pragma omp parallel for
     for (int d = 0; d < to_corpus.D; d++) {
         auto &generator = GetGenerator();
@@ -1136,10 +1147,53 @@ double BaseHLDA::PredictivePerplexity() {
             1, MPI_DOUBLE, MPI_SUM, comm);
     MPI_Allreduce(&local_T, &global_T, 
             1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, comm);
+
     //LOG(INFO) <<  local_log_likelihood << " " << local_T <<  " " << 
     //    global_log_likelihood << " " << global_T;
+
     return exp(-global_log_likelihood / global_T);
 }
+
+
+void BaseHLDA::OutputTheta() {
+    int num_test_c_samples = 10;
+    int num_test_z_burnin = 10;
+    int num_test_z_samples = 10;
+
+    std::vector<std::map<int, int>> theta(corpus.D);
+#pragma omp parallel for
+    for (int d = 0; d < corpus.D; d++) {
+        auto &generator = GetGenerator();
+        auto &doc = docs[d];
+
+        for (int ncs = 0; ncs < num_test_c_samples; ncs++) {
+            // Reset z
+            for (auto &l: doc.z) l = generator() % L;
+
+            // Sample c and z
+            for (int nz = 0; nz < num_test_z_burnin+num_test_z_samples; nz++) {
+                SampleC(doc, false, false, false);
+                SampleZ(doc, false, false, false);
+                if (nz >= num_test_z_burnin) {
+                    for (auto l: doc.z)
+                        theta[d][l*10000+doc.c[l]]++;
+                }
+            }
+        }
+    }
+
+    LOG(INFO) << "Writing results";
+    if (!outfile.empty()) {
+        ofstream ftheta(outfile.c_str());
+        for (size_t d = 0; d < corpus.D; d++) {
+            auto &t = theta[d];
+            for (auto kv: t)
+                ftheta << kv.first << ':' << kv.second << ' ';
+            ftheta << '\n';
+        }
+    }
+}
+
 
 void BaseHLDA::ComputePhi() {
     auto ret = tree.GetTree();

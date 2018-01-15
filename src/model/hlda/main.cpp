@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     //LOG(INFO) << to_corpus.w;
     //LOG(INFO) << th_corpus.w;
     //exit(0);
-
+    string outfile = FLAGS_prefix + ".theta." + to_string(process_id);
 
     // Train
     BaseHLDA *model = nullptr;
@@ -122,7 +122,9 @@ int main(int argc, char **argv) {
                                                FLAGS_L, alpha, beta, log_gamma,
                                                FLAGS_n_iters, FLAGS_n_mc_samples, FLAGS_n_mc_iters,
                                                (size_t) FLAGS_minibatch_size,
-                                               FLAGS_topic_limit, FLAGS_threshold, FLAGS_sample_phi, process_id, process_size, FLAGS_check, FLAGS_random_start);
+                                               FLAGS_topic_limit, FLAGS_threshold, FLAGS_sample_phi,
+                                               process_id, process_size, FLAGS_check, FLAGS_random_start);
+
     } else if (FLAGS_algo == "is") {
         model = new BlockGibbsSampling(corpus, to_corpus, th_corpus,
                                                FLAGS_L, alpha, beta, log_gamma,
@@ -135,6 +137,7 @@ int main(int argc, char **argv) {
                                      FLAGS_L, alpha, beta, log_gamma,
                                      process_id, process_size, FLAGS_check, FLAGS_model_path);
     }
+    model->SetOutfile(outfile);
     model->init_iiter = FLAGS_init_iiter;
 
     model->Initialize();
