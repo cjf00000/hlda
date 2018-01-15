@@ -43,7 +43,7 @@ BaseHLDA::BaseHLDA(HLDACorpus &corpus, HLDACorpus &to_corpus, HLDACorpus &th_cor
         count(L, corpus.V, omp_get_max_threads()),
         icount(1, process_size, corpus.V, 1/*K*/, row_partition,
                process_size, process_id),
-        new_topic(true), check(check) {
+        new_topic(true), check(check), allow_new_topic(true) {
 
     MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 
@@ -168,8 +168,8 @@ void BaseHLDA::Initialize() {
                                 k = generator() % L;
     
                         doc.initialized = true;
-                        SampleC(doc, (bool)it, true);
-                        SampleZ(doc, true, true);
+                        SampleC(doc, (bool)it, true, allow_new_topic);
+                        SampleZ(doc, true, true, allow_new_topic);
                     }
                     AllBarrier();
                     omp_set_num_threads(num_threads);
@@ -183,8 +183,10 @@ void BaseHLDA::Initialize() {
                           << " Processed document [" << d_start << ", " << d_end
                           << ") documents, " << ret.nodes.size()
                           << " topics.";
-                if ((int)ret.nodes.size() > (size_t) topic_limit)
-                    throw runtime_error("There are too many topics");
+                if ((int)ret.nodes.size() > (size_t) topic_limit) {
+                    allow_new_topic = false;
+//                    throw runtime_error("There are too many topics");
+                }
             }
         } else {
             for (size_t i = 0; i < num_mbs; i++) {
@@ -236,9 +238,9 @@ void BaseHLDA::Estimate() {
         for (int d = 0; d < corpus.D; d++) {
             Clock clk;
             auto &doc = docs[d];
-            SampleC(doc, true, true);
+            SampleC(doc, true, true, allow_new_topic);
             c_time.Add(clk.toc()); clk.tic();
-            SampleZ(doc, true, true);
+            SampleZ(doc, true, true, allow_new_topic);
             z_time.Add(clk.toc()); clk.tic();
         }
         int num_syncs = count.GetNumSyncs();
@@ -283,7 +285,9 @@ void BaseHLDA::Estimate() {
                                  << "    Num instantiated: " << num_i << ANSI_NOCOLOR;
             auto ret = tree.GetTree();
             LOG(INFO) << ANSI_YELLOW << "Num nodes: " << ret.num_nodes
-                                 << "    Num instantiated: " << num_instantiated << ANSI_NOCOLOR;
+                      << "    Num instantiated: " << num_instantiated << ANSI_NOCOLOR;
+            if (num_topics > topic_limit)
+                allow_new_topic = false;
         }
         double time = clk.toc();
         total_time += time;

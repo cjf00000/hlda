@@ -131,6 +131,8 @@ protected:
     std::vector<std::vector<TProb>> log_work;
 
     std::string outfile;
+
+    bool allow_new_topic;
 };
 
 #endif //HLDA_BASEHLDA_H
